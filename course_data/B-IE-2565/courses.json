@@ -16,8 +16,7 @@
       "prerequisites": [
         "01417267"
       ],
-      "corequisites": [],
-      "technical_electives": true
+      "corequisites": []
     },
     {
       "code": "01206223",
@@ -144,8 +143,7 @@
       "prerequisites": [
         "01206221"
       ],
-      "corequisites": [],
-      "technical_electives": true
+      "corequisites": []
     },
     {
       "code": "01206381",
@@ -178,7 +176,8 @@
       "name": "Internship",
       "credits": "1",
       "prerequisites": [],
-      "corequisites": []
+      "corequisites": [],
+      "technical_electives": true
     },
     {
       "code": "01206411",
@@ -568,7 +567,8 @@
       "name": "Principles of Rail Engineering",
       "credits": "3(3-0-6)",
       "prerequisites": [],
-      "corequisites": []
+      "corequisites": [],
+      "technical_electives": true
     },
     {
       "code": "01200434",
@@ -577,7 +577,8 @@
       "prerequisites": [
         "01200431"
       ],
-      "corequisites": []
+      "corequisites": [],
+      "technical_electives": true
     },
     {
       "code": "01200435",
@@ -586,7 +587,8 @@
       "prerequisites": [
         "01200431"
       ],
-      "corequisites": []
+      "corequisites": [],
+      "technical_electives": true
     },
     {
       "code": "01204111",
@@ -709,8 +711,7 @@
       "credits": "1(0-3-2)",
       "prerequisites": [],
       "corequisites": [
-        "01420111",
-        "01420117"
+        "01420111"
       ]
     }
   ]

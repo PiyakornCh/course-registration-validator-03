@@ -31,7 +31,7 @@ class ComprehensiveReportGenerator:
         
         # Generate report sections
         html_content = self._generate_html_structure()
-        html_content += self._generate_header_section(student_info, curriculum_name)
+        html_content += self._generate_header_section(student_info, curriculum_name, semesters)
         html_content += self._generate_executive_summary(student_info, semesters, analysis)
         html_content += self._generate_academic_progress_section(analysis, semesters)
         html_content += self._generate_course_completion_analysis(analysis, semesters)
@@ -240,9 +240,22 @@ class ComprehensiveReportGenerator:
             <div class="container">
         """
     
-    def _generate_header_section(self, student_info: Dict, curriculum_name: str) -> str:
+    def _generate_header_section(self, student_info: Dict, curriculum_name: str, semesters: List[Dict] = None) -> str:
         """Generate the report header."""
         current_date = datetime.now().strftime("%B %d, %Y")
+        
+        # Get cumulative GPA from second-to-last semester
+        gpa_text = ""
+        if semesters and len(semesters) >= 2:
+            second_last_semester = semesters[-2]
+            cum_gpa = second_last_semester.get('cum_gpa')
+            if cum_gpa is not None:
+                gpa_text = f" • GPA: {cum_gpa:.2f}"
+        elif semesters and len(semesters) == 1:
+            latest_semester = semesters[-1]
+            cum_gpa = latest_semester.get('cum_gpa')
+            if cum_gpa is not None:
+                gpa_text = f" • GPA: {cum_gpa:.2f}"
         
         return f"""
         <div class="report-header">
@@ -250,7 +263,7 @@ class ComprehensiveReportGenerator:
             <div class="subtitle">
                 <strong>{student_info.get('name', 'Student Name')}</strong> • 
                 ID: {student_info.get('id', 'N/A')} • 
-                {curriculum_name} • 
+                {curriculum_name}{gpa_text} • 
                 Generated: {current_date}
             </div>
         </div>

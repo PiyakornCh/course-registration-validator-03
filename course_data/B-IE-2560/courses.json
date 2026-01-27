@@ -484,9 +484,7 @@
       "code": "01200434",
       "name": "Rail Infrastructure",
       "credits": "3(3-0-6)",
-      "prerequisites": [
-        "01200431"
-      ],
+      "prerequisites": [],
       "corequisites": [],
       "technical_electives": true
     },
@@ -494,9 +492,7 @@
       "code": "01200435",
       "name": "Rail System Operation and Maintenance",
       "credits": "3(3-0-6)",
-      "prerequisites": [
-        "01200431"
-      ],
+      "prerequisites": [],
       "corequisites": [],
       "technical_electives": true
     },

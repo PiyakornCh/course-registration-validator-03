@@ -112,13 +112,15 @@ class UIComponents:
             st.write(f"**Name:** {student_info.get('name', 'Unknown')}")
             st.write(f"**Field of Study:** {student_info.get('field_of_study', 'Unknown')}")
             
+            
             st.divider()
             st.subheader("📚 Semester Summary")
             for i, sem in enumerate(semesters):
                 semester_name = sem.get('semester', f'Semester {i+1}')
                 course_count = len(sem.get('courses', []))
                 total_credits = sem.get('total_credits', 0)
-                st.write(f"• **{semester_name}:** {course_count} courses, {total_credits} credits")
+                sem_gpa = sem.get('sem_gpa')
+                st.write(f"• **{semester_name}:** {course_count} courses, {total_credits} credits, GPA: {sem_gpa}")
         
         with col2:
             st.header("✅ Validation Results")

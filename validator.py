@@ -469,6 +469,7 @@ class CourseRegistrationValidator:
                 # If a prerequisite was withdrawn in the same semester, the course is invalid
                 none_blocking_prereqs = { # Examples of prerequisites that do not block enrollment if failed
                     "01420113":{"01420111"},
+                    "01420114":{"01420112"},
                     "01403114":{"01403117"}
                 }
                 allowed_non_blocking = none_blocking_prereqs.get(course_code, set())

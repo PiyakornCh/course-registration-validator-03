@@ -141,7 +141,7 @@ class FlowChartGenerator:
         
         # Generate complete HTML
         complete_html = self.html_generator.generate_complete_html(
-            student_info, template, curriculum_grid_html, electives_html
+            student_info, template, curriculum_grid_html, electives_html, semesters
         )
         
         return complete_html, 0

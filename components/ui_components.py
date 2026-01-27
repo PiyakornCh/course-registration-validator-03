@@ -112,6 +112,19 @@ class UIComponents:
             st.write(f"**Name:** {student_info.get('name', 'Unknown')}")
             st.write(f"**Field of Study:** {student_info.get('field_of_study', 'Unknown')}")
             
+            # Display cumulative GPA from second-to-last semester
+            if semesters and len(semesters) >= 2:
+                second_last_semester = semesters[-2]
+                cum_gpa = second_last_semester.get('cum_gpa', 'N/A')
+                if cum_gpa != 'N/A' and cum_gpa is not None:
+                    st.write(f"**Cumulative GPA:** {cum_gpa:.2f}")
+            elif semesters and len(semesters) == 1:
+                # If only one semester, use that
+                latest_semester = semesters[-1]
+                cum_gpa = latest_semester.get('cum_gpa', 'N/A')
+                if cum_gpa != 'N/A' and cum_gpa is not None:
+                    st.write(f"**Cumulative GPA:** {cum_gpa:.2f}")
+            
             st.divider()
             st.subheader("📚 Semester Summary")
             for i, sem in enumerate(semesters):

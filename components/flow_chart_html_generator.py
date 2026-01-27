@@ -1143,13 +1143,26 @@ class FlowChartHTMLGenerator:
         </script>
         """
 
-    def generate_header_section(self, student_info: Dict, template: Dict) -> str:
+    def generate_header_section(self, student_info: Dict, template: Dict, semesters: List[Dict] = None) -> str:
         """Generate the header section of the flow chart."""
+        # Get cumulative GPA from second-to-last semester
+        gpa_text = ""
+        if semesters and len(semesters) >= 2:
+            second_last_semester = semesters[-2]
+            cum_gpa = second_last_semester.get('cum_gpa')
+            if cum_gpa is not None:
+                gpa_text = f" | <strong>Cumulative GPA:</strong> {cum_gpa:.2f}"
+        elif semesters and len(semesters) == 1:
+            latest_semester = semesters[-1]
+            cum_gpa = latest_semester.get('cum_gpa')
+            if cum_gpa is not None:
+                gpa_text = f" | <strong>Cumulative GPA:</strong> {cum_gpa:.2f}"
+        
         return f"""
         <div class="header">
             <h1>IE Curriculum Flow Chart</h1>
             <p><strong>Template:</strong> {template.get('curriculum_name', 'Unknown')} | 
-               <strong>Student:</strong> {student_info.get('name', 'N/A')} ({student_info.get('id', 'N/A')})</p>
+               <strong>Student:</strong> {student_info.get('name', 'N/A')} ({student_info.get('id', 'N/A')}){gpa_text}</p>
         </div>
         """
     
@@ -1230,11 +1243,11 @@ class FlowChartHTMLGenerator:
         """
     
     def generate_complete_html(self, student_info: Dict, template: Dict, 
-                              curriculum_grid_html: str, electives_html: str = "") -> str:
+                              curriculum_grid_html: str, electives_html: str = "", semesters: List[Dict] = None) -> str:
         """Generate the complete HTML document."""
         css_styles = self.generate_css_styles()
         javascript = self.generate_javascript()
-        header_html = self.generate_header_section(student_info, template)
+        header_html = self.generate_header_section(student_info, template, semesters)
         legend_html = self.generate_legend_section()
         
         return f"""

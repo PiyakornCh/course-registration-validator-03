@@ -186,7 +186,7 @@ class FlowChartDataAnalyzer:
                     elif "summer" in semester_name:
                         normalized_semester_type = "Summer"
                 
-                if grade in ["A", "B+", "B", "C+", "C", "D+", "D", "P"]:
+                if grade in ["A", "B+", "B", "C+", "C", "D+", "D"]:
                     completed_courses[code] = {
                         "grade": grade,
                         "semester": semester.get("semester", ""),
@@ -251,7 +251,7 @@ class FlowChartDataAnalyzer:
                 code = course.get("code", "")
                 grade = course.get("grade", "")
                 
-                if grade not in ["A", "B+", "B", "C+", "C", "D+", "D", "P"]:
+                if grade not in ["A", "B+", "B", "C+", "C", "D+", "D"]:
                     continue
                 
                 # Check if it's in the core curriculum
@@ -264,9 +264,11 @@ class FlowChartDataAnalyzer:
                     if is_core:
                         break
                 
-                if not is_core:
-                    category, subcategory, is_identified = self.classify_course(code, course.get("name", ""))
-                    
+                # Classify course category
+                category, subcategory, is_identified = self.classify_course(code, course.get("name", ""))
+                
+                # Include in elective analysis if not core, or if core but technical elective
+                if not is_core or (is_core and category == "technical_electives"):
                     elective_key = None
                     if category == "technical_electives":
                         elective_key = "technical_electives"

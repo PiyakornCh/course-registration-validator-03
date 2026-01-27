@@ -4,6 +4,7 @@ Authentication module for admin login and password management
 import streamlit as st
 import hashlib
 import os
+import re
 
 PASSWORD_FILE = "admin_password.txt"
 
@@ -33,6 +34,40 @@ def check_login(username, password):
     stored_password = load_password()
     return username == "admin" and hash_password(password) == stored_password
 
+def validate_password_strength(password):
+    """
+    Validate password strength
+    Requirements:
+    - At least 8 characters
+    - Contains at least one digit
+    - Contains at least one special character
+    - Contains at least one lowercase letter
+    - Contains at least one uppercase letter
+    
+    Returns: (is_valid, list_of_errors)
+    """
+    errors = []
+    
+    if len(password) < 8:
+        errors.append("• At least 8 characters")
+    
+    if not re.search(r'[0-9]', password):
+        errors.append("• At least one digit (0-9)")
+    
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/;\'`~]', password):
+        errors.append("• At least one special character (!@#$%^&* etc.)")
+    
+    if not re.search(r'[a-z]', password):
+        errors.append("• At least one lowercase letter (a-z)")
+    
+    if not re.search(r'[A-Z]', password):
+        errors.append("• At least one uppercase letter (A-Z)")
+    
+    if errors:
+        return False, errors
+    
+    return True, []
+
 def render_login_page():
     """Render the login page"""
     # Hero Section
@@ -45,41 +80,95 @@ def render_login_page():
     with col2:
         st.subheader("🔐 Admin Login")
         
-        username = st.text_input("Username", placeholder="Enter your username", key="login_username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
+        # Create a form to enable Enter key submission
+        with st.form(key="login_form", clear_on_submit=False):
+            username = st.text_input("Username", placeholder="Enter your username", key="login_username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
+            
+            col_btn1, col_btn2 = st.columns(2)
+            
+            with col_btn1:
+                login_submitted = st.form_submit_button("🚀 Login", use_container_width=True, type="primary")
+            
+            with col_btn2:
+                change_pass_btn = st.form_submit_button("🔑 Change Password", use_container_width=True)
         
-        col_btn1, col_btn2 = st.columns(2)
+        # Handle login submission
+        if login_submitted:
+            if check_login(username, password):
+                st.session_state.admin_logged_in = True
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password")
         
-        with col_btn1:
-            if st.button("🚀 Login", use_container_width=True, type="primary"):
-                if check_login(username, password):
-                    st.session_state.admin_logged_in = True
-                    st.rerun()
-                else:
-                    st.error("❌ Invalid username or password")
+        # Handle change password button
+        if change_pass_btn:
+            st.session_state.show_change_password = True
         
-        with col_btn2:
-            if st.button("🔑 Change Password", use_container_width=True):
-                st.session_state.show_change_password = True
+        # Show success message after password change (outside the form, below login box)
+        if 'password_changed_success' in st.session_state and st.session_state.password_changed_success:
+            st.success("✅ Password changed successfully!")
+            del st.session_state.password_changed_success
         
         # Change Password Section
         if st.session_state.show_change_password:
             st.markdown("---")
             st.subheader("Change Password")
             
-            old_password = st.text_input("Current Password", type="password", key="old_pass")
-            new_password = st.text_input("New Password", type="password", key="new_pass")
-            confirm_password = st.text_input("Confirm New Password", type="password", key="confirm_pass")
+            # Track button click state
+            button_clicked = False
             
-            if st.button("✅ Confirm Change", use_container_width=True, type="primary"):
-                if hash_password(old_password) != load_password():
+            # Input fields outside form for real-time validation
+            old_password = st.text_input("Current Password", type="password", key="old_pass_input")
+            
+            # Show error for current password after button click
+            if 'change_pwd_clicked' in st.session_state and st.session_state.change_pwd_clicked:
+                if not old_password:
+                    st.error("❌ Please enter current password")
+                elif hash_password(old_password) != load_password():
                     st.error("❌ Current password is incorrect")
-                elif new_password != confirm_password:
-                    st.error("❌ New passwords do not match")
-                elif len(new_password) < 4:
-                    st.error("❌ Password must be at least 4 characters")
+            
+            new_password = st.text_input("New Password", type="password", key="new_pass_input", 
+                                        help="Must be at least 8 characters with uppercase, lowercase, digit, and special character")
+            
+            # Real-time password strength validation
+            if new_password:
+                is_valid, errors = validate_password_strength(new_password)
+                if is_valid:
+                    st.success("✅ Password is strong!")
                 else:
-                    save_password(new_password)
-                    st.success("✅ Password changed successfully!")
-                    st.session_state.show_change_password = False
-                    st.rerun()
+                    st.error("❌ Password requirements:  \n  \n" + "  \n".join(errors))
+            elif 'change_pwd_clicked' in st.session_state and st.session_state.change_pwd_clicked and not new_password:
+                st.error("❌ Please enter new password")
+            
+            confirm_password = st.text_input("Confirm New Password", type="password", key="confirm_pass_input")
+            
+            # Real-time password match validation
+            if confirm_password and new_password:
+                # Check if new password meets requirements first
+                is_valid, errors = validate_password_strength(new_password)
+                if confirm_password != new_password:
+                    st.error("❌ New passwords do not match")
+
+            elif 'change_pwd_clicked' in st.session_state and st.session_state.change_pwd_clicked and not confirm_password:
+                st.error("❌ Please confirm new password")
+            
+            # Submit button
+            if st.button("✅ Confirm Change", use_container_width=True, type="primary", key="confirm_change_btn"):
+                st.session_state.change_pwd_clicked = True
+                
+                # Validate all fields
+                if old_password and new_password and confirm_password:
+                    if hash_password(old_password) == load_password():
+                        if new_password == confirm_password:
+                            # Validate password strength
+                            is_valid, errors = validate_password_strength(new_password)
+                            if is_valid:
+                                save_password(new_password)
+                                st.session_state.password_changed_success = True
+                                st.session_state.show_change_password = False
+                                if 'change_pwd_clicked' in st.session_state:
+                                    del st.session_state.change_pwd_clicked
+                                st.rerun()
+                st.rerun()
+                    

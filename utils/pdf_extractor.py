@@ -234,7 +234,7 @@ class PDFExtractor:
                         seen_codes.add(course_code)
                         
                         # Count credits
-                        if grade not in ['W', 'N', '']:
+                        if grade not in ['W', 'N', 'P', 'S', 'U', '']:
                             current_semester["total_credits"] += credits
                         
                     except (IndexError, ValueError) as e:

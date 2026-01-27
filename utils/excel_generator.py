@@ -418,8 +418,8 @@ def create_smart_registration_excel(student_info, semesters, validation_results)
         
         # GEN-ED SECTIONS with proper credit requirements
         gen_ed_categories = [
-            ("wellness", "WELLNESS (Gen-Ed)", "5"),
-            ("wellness_PE", "WELLNESS & PE (Gen-Ed)", "2"),
+            ("wellness", "WELLNESS (Gen-Ed)", "6"),
+            ("wellness_PE", "WELLNESS & PE (Gen-Ed)", "1"),
             ("entrepreneurship", "ENTREPRENEURSHIP (Gen-Ed)", "3"),
             ("language_communication_thai", "THAI LANGUAGE & COMMUNICATION (Gen-Ed)", "3"),
             ("language_communication_foreigner", "FOREIGN LANGUAGE & COMMUNICATION (Gen-Ed)", "9"),
@@ -456,7 +456,7 @@ def create_smart_registration_excel(student_info, semesters, validation_results)
         current_row += 1
         
         # Calculate credits by category with completion rates
-        ie_credits = sum(c["credits"] for c in classified_courses["ie_core"] if c["grade"] not in ['F', 'W', 'N', ''])
+        ie_credits = sum(c["credits"] for c in classified_courses["ie_core"] if c["grade"] not in ['F', 'W', 'N', 'P', 'S', 'U', ''])
         ie_total = sum(c["credits"] for c in classified_courses["ie_core"])
         
         gen_ed_credits = {}
@@ -466,16 +466,16 @@ def create_smart_registration_excel(student_info, semesters, validation_results)
         for subcategory in classified_courses["gen_ed"].keys():
             gen_ed_credits[subcategory] = sum(
                 c["credits"] for c in classified_courses["gen_ed"][subcategory] 
-                if c["grade"] not in ['F', 'W', 'N', '']
+                if c["grade"] not in ['F', 'W', 'N', 'P', 'S', 'U', '']
             )
             gen_ed_totals[subcategory] = sum(
                 c["credits"] for c in classified_courses["gen_ed"][subcategory]
             )
         
         # FIXED: Technical electives now properly separated from free electives
-        tech_credits = sum(c["credits"] for c in classified_courses["technical_electives"] if c["grade"] not in ['F', 'W', 'N', ''])
-        free_credits = sum(c["credits"] for c in classified_courses["free_electives"] if c["grade"] not in ['F', 'W', 'N', ''])
-        unidentified_credits = sum(c["credits"] for c in classified_courses["unidentified"] if c["grade"] not in ['F', 'W', 'N', ''])
+        tech_credits = sum(c["credits"] for c in classified_courses["technical_electives"] if c["grade"] not in ['F', 'W', 'N', 'P', 'S', 'U', ''])
+        free_credits = sum(c["credits"] for c in classified_courses["free_electives"] if c["grade"] not in ['F', 'W', 'N', 'P', 'S', 'U', ''])
+        unidentified_credits = sum(c["credits"] for c in classified_courses["unidentified"] if c["grade"] not in ['F', 'W', 'N', 'P', 'S', 'U', ''])
         
         # Credit requirements mapping - dynamically build from gen_ed_credits
         requirements = {
@@ -487,8 +487,8 @@ def create_smart_registration_excel(student_info, semesters, validation_results)
         
         # Add gen_ed categories dynamically with proper display names
         gen_ed_display_names = {
-            "wellness": ("Wellness", 5),
-            "wellness_PE": ("Wellness & PE", 2),
+            "wellness": ("Wellness", 6),
+            "wellness_PE": ("Wellness & PE", 1),
             "entrepreneurship": ("Entrepreneurship", 3),
             "language_communication_thai": ("Thai Language & Communication", 3),
             "language_communication_foreigner": ("Foreign Language & Communication", 9),

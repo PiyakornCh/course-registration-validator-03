@@ -69,8 +69,9 @@ def render_manage_page():
                                 for semester_key, course_list in year_data.items():
                                     core_course_codes.update(course_list)
                     
-                    # Display total courses (only core curriculum)
-                    st.metric("Total Courses", len(core_course_codes))
+                    # Display total courses (all courses in courses.json)
+                    total_courses = len(courses_data.get('industrial_engineering_courses', []))
+                    st.metric("Total Courses", total_courses)
                     
                     # Display elective requirements
                     if elective_reqs:
@@ -85,24 +86,21 @@ def render_manage_page():
                             idx += 1
                         st.markdown("---")
                     
-                    # Display courses in table (only core curriculum courses)
+                    # Display courses in table (all courses in order from courses.json)
                     st.markdown("**Course List:**")
                     courses_list = []
                     
-                    # Create a dictionary for quick lookup
-                    courses_dict = {course['code']: course for course in courses_data['industrial_engineering_courses']}
-                    
-                    # Only include courses that are in core_curriculum
-                    for course_code in sorted(core_course_codes):
-                        if course_code in courses_dict:
-                            course = courses_dict[course_code]
-                            courses_list.append({
-                                "Code": course['code'],
-                                "Course Name": course['name'],
-                                "Credits": course['credits'],
-                                "Prerequisites": ", ".join(course['prerequisites']) if course['prerequisites'] else "-",
-                                "Corequisites": ", ".join(course['corequisites']) if course['corequisites'] else "-"
-                            })
+                    # Show all courses in the same order as courses.json (no sorting)
+                    for course in courses_data['industrial_engineering_courses']:
+                        tech_elec = "Yes" if course.get('technical_electives', False) else "No"
+                        courses_list.append({
+                            "Code": course['code'],
+                            "Course Name": course['name'],
+                            "Credits": course['credits'],
+                            "Technical Elective": tech_elec,
+                            "Prerequisites": ", ".join(course['prerequisites']) if course['prerequisites'] else "-",
+                            "Corequisites": ", ".join(course['corequisites']) if course['corequisites'] else "-"
+                        })
                     
                     df_courses = pd.DataFrame(courses_list)
                     st.dataframe(df_courses, use_container_width=True, height=300)

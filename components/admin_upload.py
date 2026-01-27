@@ -22,11 +22,11 @@ def csv_to_json(df, year):
             code = '0' + code
         
         # Handle Prerequisites
-        prereq_str = str(row['Prerequisite(s)']).strip()
+        prereq_str = str(row['Prerequisites']).strip()
         prerequisites = []
-        if prereq_str and prereq_str != 'nan' and prereq_str != '':
-            # Split prerequisites by comma
-            prereqs = [p.strip() for p in prereq_str.split(',')]
+        if prereq_str and prereq_str != 'nan' and prereq_str != '' and prereq_str != '-':
+            # Split prerequisites by comma or semicolon
+            prereqs = [p.strip() for p in prereq_str.replace(';', ',').split(',')]
             for p in prereqs:
                 # Remove .0 if present
                 if p.endswith('.0'):
@@ -36,11 +36,11 @@ def csv_to_json(df, year):
                 prerequisites.append(p)
         
         # Handle Corequisites
-        coreq_str = str(row['Corequisite(s)']).strip()
+        coreq_str = str(row['Corequisites']).strip()
         corequisites = []
-        if coreq_str and coreq_str != 'nan' and coreq_str != '':
-            # Split corequisites by comma
-            coreqs = [c.strip() for c in coreq_str.split(',')]
+        if coreq_str and coreq_str != 'nan' and coreq_str != '' and coreq_str != '-':
+            # Split corequisites by comma or semicolon
+            coreqs = [c.strip() for c in coreq_str.replace(';', ',').split(',')]
             for c in coreqs:
                 # Remove .0 if present
                 if c.endswith('.0'):
@@ -55,13 +55,20 @@ def csv_to_json(df, year):
         if credits_value.endswith('.0'):
             credits_value = credits_value[:-2]
         
+        # Check if Technical Elective
+        tech_elective = str(row.get('Technical Elective', 'No')).strip().lower() in ['yes', 'true', '1']
+        
         course = {
             "code": code,
-            "name": str(row['Course Name']).strip(),
+            "name": str(row['Name']).strip(),
             "credits": credits_value,
             "prerequisites": prerequisites,
             "corequisites": corequisites
         }
+        
+        # Add technical_electives flag if Yes
+        if tech_elective:
+            course["technical_electives"] = True
         
         courses.append(course)
     
@@ -109,8 +116,19 @@ def create_template_json(df, year):
         if len(code) == 7:
             code = '0' + code
         
-        year_num = int(row['Year'])
-        semester = int(row['Semester'])
+        # Handle Year and Semester - skip if empty or NaN
+        year_str = str(row['Year']).strip()
+        semester_str = str(row['Semester']).strip()
+        
+        # Skip rows without Year or Semester (elective requirement rows or empty rows)
+        if not year_str or year_str == 'nan' or year_str == '' or not semester_str or semester_str == 'nan' or semester_str == '':
+            continue
+        
+        try:
+            year_num = int(float(year_str))
+            semester = int(float(semester_str))
+        except (ValueError, TypeError):
+            continue
         
         year_key = f"year_{year_num}"
         semester_key = "first_semester" if semester == 1 else "second_semester"
@@ -122,9 +140,14 @@ def create_template_json(df, year):
         
         year_semester_map[year_key][semester_key].append(code)
     
+    # Sort year_semester_map by year number (year_1, year_2, year_3, year_4)
+    sorted_year_semester_map = {}
+    for year_key in sorted(year_semester_map.keys(), key=lambda x: int(x.split('_')[1])):
+        sorted_year_semester_map[year_key] = year_semester_map[year_key]
+    
     template = {
         "curriculum_name": f"B-IE-{year}",
-        "core_curriculum": year_semester_map,
+        "core_curriculum": sorted_year_semester_map,
         "elective_requirements": elective_requirements
     }
     
@@ -164,13 +187,34 @@ def save_course_data(courses_json, template_json, year):
 
 def render_upload_page():
     """Render the upload page"""
-    st.header("📤 Upload CSV File")
+    # Header with download button on the same line
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.header("📤 Upload CSV File")
+    with col2:
+        try:
+            with open("format.csv", "r", encoding="utf-8") as f:
+                format_csv_content = f.read()
+            
+            st.markdown("<br>", unsafe_allow_html=True)  # Add spacing to align with header
+            st.download_button(
+                label="📥 Download Format",
+                data=format_csv_content,
+                file_name="format.csv",
+                mime="text/csv",
+                help="Download the CSV format template",
+                type="secondary",
+                use_container_width=True
+            )
+        except FileNotFoundError:
+            st.info("💡 format.csv not found")
+    
     st.markdown("Upload your course curriculum CSV file to convert it to JSON format")
     
     uploaded_file = st.file_uploader(
         "Choose a CSV file",
         type=['csv'],
-        help="File must follow the format specified in CSV_Format.csv"
+        help="File must follow the format specified in format.csv"
     )
     
     if uploaded_file is not None:
@@ -178,26 +222,23 @@ def render_upload_page():
             # Read CSV file with specific dtypes to prevent float conversion
             df = pd.read_csv(uploaded_file, dtype={
                 'Code': str,
-                'Prerequisite(s)': str,
-                'Corequisite(s)': str,
-                'Credits': str
+                'Prerequisites': str,
+                'Corequisites': str,
+                'Credits': str,
+                'Technical Elective': str,
+                'Year': str,
+                'Semester': str,
+                'Elective Requirements': str,
+                'TotalCredits': str
             })
             
             # Check required columns
-            required_columns = ['Code', 'Course Name', 'Prerequisite(s)', 'Corequisite(s)', 'Credits', 'Year', 'Semester', 'Elective Requirements', 'TotalCredits']
+            required_columns = ['Code', 'Name', 'Credits', 'Technical Elective', 'Prerequisites', 'Corequisites', 'Year', 'Semester', 'Elective Requirements', 'TotalCredits']
             
             if all(col in df.columns for col in required_columns):
                 st.success("✅ File read successfully!")
                 
-                # Show metrics first
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Total Courses", len(df))
-                with col2:
-                    st.metric("Years", df['Year'].nunique())
-                with col3:
-                    st.metric("Semesters", df['Semester'].nunique())
-                
+                st.markdown("---")
                 # Specify curriculum year
                 st.subheader("📅 Specify Curriculum Year")
                 col1, col2 = st.columns([2, 3])
@@ -221,7 +262,6 @@ def render_upload_page():
                         st.warning(f"⚠️ Curriculum {curriculum_name} already exists. Saving will overwrite existing data.")
                     
                     # Save button
-                    st.markdown("---")
                     col1, col2, col3 = st.columns([1, 2, 1])
                     with col2:
                         if st.button("💾 Save Data", type="primary", use_container_width=True):
@@ -245,10 +285,36 @@ def render_upload_page():
                 
                 elif year:
                     st.error("❌ Please enter a valid 4-digit year")
-                
+
                 # Preview Data at the bottom
-                st.markdown("---")
                 st.subheader("📋 Preview Data")
+                # Show metrics first
+                st.metric("Total Courses", len(df))
+                # Extract and display Elective Requirements
+                elective_reqs = {}
+                if 'Elective Requirements' in df.columns and 'TotalCredits' in df.columns:
+                    for _, row in df.iterrows():
+                        req_name = str(row['Elective Requirements']).strip()
+                        req_value = str(row['TotalCredits']).strip()
+                        
+                        if req_name and req_name != 'nan' and req_name != '' and req_value and req_value != 'nan' and req_value != '':
+                            try:
+                                # Format name for display
+                                display_name = req_name.replace('_', ' ').title()
+                                elective_reqs[display_name] = int(float(req_value))
+                            except:
+                                pass
+                
+                # Display elective requirements if found
+                if elective_reqs:
+                    st.markdown("**Elective Requirements:**")
+                    elective_cols = st.columns(5)
+                    idx = 0
+                    for req_name, req_value in elective_reqs.items():
+                        with elective_cols[idx % 5]:
+                            st.metric(req_name, req_value)
+                        idx += 1
+                    st.markdown("---")
                 
                 # Format Code and Prerequisite(s) columns for display
                 df_display = df.copy()
@@ -258,21 +324,25 @@ def render_upload_page():
                     lambda x: ('0' + str(x).strip()) if len(str(x).strip()) == 7 else str(x).strip()
                 )
                 
-                # Format Prerequisite(s) column - add leading 0 if 7 digits
+                # Format Prerequisites column - add leading 0 if 7 digits
                 def format_prerequisites(prereq_str):
                     prereq_str = str(prereq_str).strip()
                     if prereq_str and prereq_str != 'nan' and prereq_str != '' and prereq_str != 'None':
-                        prereqs = [p.strip() for p in prereq_str.split(',')]
+                        prereqs = [p.strip() for p in prereq_str.replace(';', ',').split(',')]
                         formatted = []
                         for p in prereqs:
                             if len(p) == 7:
                                 p = '0' + p
                             formatted.append(p)
                         return ', '.join(formatted)
-                    return prereq_str
+                    return '-'
                 
-                df_display['Prerequisite(s)'] = df_display['Prerequisite(s)'].apply(format_prerequisites)
-                df_display['Corequisite(s)'] = df_display['Corequisite(s)'].apply(format_prerequisites)
+                df_display['Prerequisites'] = df_display['Prerequisites'].apply(format_prerequisites)
+                df_display['Corequisites'] = df_display['Corequisites'].apply(format_prerequisites)
+                
+                # Reorder columns for display
+                display_columns = ['Code', 'Name', 'Credits', 'Technical Elective', 'Prerequisites', 'Corequisites', 'Year', 'Semester']
+                df_display = df_display[[col for col in display_columns if col in df_display.columns]]
                 
                 st.dataframe(df_display, use_container_width=True, height=400)
             

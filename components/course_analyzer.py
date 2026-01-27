@@ -35,8 +35,10 @@ class CourseAnalyzer:
         # FUTURE-PROOF: Find all B-IE files dynamically
         ie_files = []
         if course_data_dir.exists():
-            for json_file in course_data_dir.glob("B-IE-*.json"):
-                year_match = re.search(r'B-IE-(\d{4})\.json', json_file.name)
+            for json_file in course_data_dir.glob("**/courses.json"):
+                # Extract year from parent directory name (e.g., B-IE-2560)
+                parent_dir = json_file.parent.name
+                year_match = re.search(r'B-IE-(\d{4})', parent_dir)
                 if year_match:
                     year = int(year_match.group(1))
                     ie_files.append((year, json_file))
@@ -218,7 +220,7 @@ class CourseAnalyzer:
                     credits = course.get("credits", 0)
                     
                     # Only count completed courses
-                    if grade in ["A", "B+", "B", "C+", "C", "D+", "D", "P"]:
+                    if grade in ["A", "B+", "B", "C+", "C", "D+", "D"]:
                         category, subcategory, is_identified = self.classify_course(
                             course_code, course_name, self.course_categories
                         )

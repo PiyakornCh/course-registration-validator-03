@@ -663,8 +663,10 @@ class CourseRegistrationValidator:
             report_lines.append("-" * len(semester_name))
             
             # Calculate total registered credits (including invalid)
+            # Exclude W, P, N, S, U
+            excluded_grades = {"W", "P", "N", "S", "U"}
             total_registered_credits = sum(c.get("credits", 0) for c in semester.get("courses", [])
-                                         if c.get("grade") != "W")  # Exclude withdrawn courses
+                                         if c.get("grade") not in excluded_grades)
             
             # Calculate recalculated semester GPAs
             semester_gpa, _ = self.calculate_gpa(semester.get("courses", []))

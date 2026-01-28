@@ -395,124 +395,137 @@ class CourseRegistrationValidator:
     def propagate_invalidation(self, semesters: List[Dict], validation_results: List[Dict]) -> None:
         """
         Propagate invalidation from invalid courses to their dependent courses.
-        This handles the chain reaction of invalid prerequisites.
-        
+
         Rules:
-        1. If a prerequisite is withdrawn (W) in the same semester, dependent courses are invalid
-        2. If a prerequisite is failed (F) in the same semester, dependent courses remain valid (concurrent registration)
-        3. If a prerequisite is invalid from previous validation, all dependent courses are invalid
+        1. If a prerequisite is withdrawn (W) in the same semester,
+        dependent courses are invalid
+        EXCEPT when both prerequisite and dependent course are W.
+        2. If a prerequisite is failed (F) in the same semester,
+        dependent courses remain valid (concurrent registration).
+        3. If a prerequisite is invalid from previous validation,
+        all dependent courses are invalid.
         """
         logger.debug("Starting invalidation propagation...")
-        
+
         # Map course codes to their validation results
         course_results = {}
         for result in validation_results:
             if result.get("course_code") != "CREDIT_LIMIT":
                 key = (result.get("course_code"), result.get("semester_index"))
                 course_results[key] = result
-        
-        # Create a map of courses to their prerequisites (combining old and new formats)
+
+        # Create a map of courses to their prerequisites
         course_prereqs = {}
         for semester_index, semester in enumerate(semesters):
             for course in semester.get("courses", []):
                 course_code = course.get("code")
                 course_info = self.all_courses.get(course_code, {})
-                
+
                 if course_info:
                     prereqs = set()
-                    
-                    # Add prerequisites from the old format
-                    if "prerequisites" in course_info and course_info["prerequisites"]:
+
+                    # Old format
+                    if course_info.get("prerequisites"):
                         prereqs.update(course_info["prerequisites"])
-                    
-                    # Add prerequisites from the new prerequisite_groups format
-                    if "prerequisite_groups" in course_info:
-                        for group in course_info.get("prerequisite_groups", []):
-                            prereqs.update(group.get("courses", []))
-                    
+
+                    # New prerequisite_groups format
+                    for group in course_info.get("prerequisite_groups", []):
+                        prereqs.update(group.get("courses", []))
+
                     if prereqs:
                         course_prereqs[(course_code, semester_index)] = list(prereqs)
-        
-        # Create a mapping of withdrawn courses in each semester
-        # We specifically track withdrawn courses not failed courses as per requirement
+
+        # Track withdrawn courses per semester
         withdrawn_courses = {}
         for semester_index, semester in enumerate(semesters):
-            withdrawn_courses[semester_index] = set()
-            for course in semester.get("courses", []):
-                if course.get("grade") == "W":
-                    withdrawn_courses[semester_index].add(course.get("code"))
-        
-        # Propagate invalidation
+            withdrawn_courses[semester_index] = {
+                c.get("code")
+                for c in semester.get("courses", [])
+                if c.get("grade") == "W"
+            }
+
         iterations = 0
         changes_made = True
-        
-        while changes_made and iterations < 10:  # Limit iterations to prevent infinite loops
+
+        while changes_made and iterations < 10:
             iterations += 1
             changes_made = False
             logger.debug(f"Propagation iteration {iterations}")
-            
+
             for (course_code, semester_index), prereqs in course_prereqs.items():
-                # Skip if this course is already invalid
                 result_key = (course_code, semester_index)
+
+                # Skip already invalid or missing results
                 if result_key not in course_results or not course_results[result_key].get("is_valid", True):
                     continue
-                
-                # Get the course with this code in this semester
+
                 semester = semesters[semester_index]
-                course = next((c for c in semester.get("courses", []) if c.get("code") == course_code), None)
-                
-                # Skip courses not graded yet
+                course = next(
+                    (c for c in semester.get("courses", []) if c.get("code") == course_code),
+                    None
+                )
+
+                # Skip ungraded courses
                 if not course or course.get("grade") == "N":
                     continue
-                
-                # Handle within-semester dependencies specifically for withdrawn courses
-                # If a prerequisite was withdrawn in the same semester, the course is invalid
-                none_blocking_prereqs = { # Examples of prerequisites that do not block enrollment if failed
-                    "01420113":{"01420111"},
-                    "01420114":{"01420112"},
-                    "01403114":{"01403117"}
+
+                # Non-blocking prerequisite exceptions
+                non_blocking_prereqs = {
+                    "01420113": {"01420111"},
+                    "01420114": {"01420112"},
+                    "01403114": {"01403117"},
                 }
-                allowed_non_blocking = none_blocking_prereqs.get(course_code, set())
+                allowed_non_blocking = non_blocking_prereqs.get(course_code, set())
+
+                # --- Rule 1: Withdrawn prerequisite in the same semester ---
                 for prereq_code in prereqs:
                     if prereq_code in allowed_non_blocking:
-                        logger.debug(f"Ignoring prereq {prereq_code} for course {course_code} (non-blocking)")
                         continue
-                    # Check if the prerequisite was withdrawn in the same semester
+
                     if prereq_code in withdrawn_courses.get(semester_index, set()):
-                        logger.debug(f"Marking {course_code} in semester {semester_index} as invalid because prerequisite {prereq_code} was withdrawn (W) in this semester")
+                        # If both prerequisite and course are W in the same semester → do NOT invalidate
+                        if course.get("grade") == "W":
+                            logger.debug(
+                                f"Skipping invalidation for {course_code} in semester {semester_index} "
+                                f"because both course and prerequisite {prereq_code} are withdrawn (W)"
+                            )
+                            continue
+
+                        logger.debug(
+                            f"Marking {course_code} in semester {semester_index} as invalid "
+                            f"because prerequisite {prereq_code} was withdrawn (W) in this semester"
+                        )
                         course_results[result_key]["is_valid"] = False
-                        course_results[result_key]["reason"] = f"Prerequisite {prereq_code} was withdrawn (W) or failed (F) in this semester"
+                        course_results[result_key]["reason"] = (
+                            f"Prerequisite {prereq_code} was withdrawn (W) in this semester"
+                        )
                         changes_made = True
                         break
-                
-                # Skip withdrawn courses after handling within-semester dependencies
+
+                # If the course itself is W, do not propagate further
                 if course.get("grade") == "W":
                     continue
-                
-                # Check if any prerequisite is invalid in current or previous semesters
+
+                # --- Rule 3: Invalid prerequisite from current or previous semesters ---
                 for prereq_code in prereqs:
-                    prereq_invalid = False
-                    invalid_semester = None
-                    
-                    # Check current and all previous semesters
                     for i in range(semester_index + 1):
                         prereq_key = (prereq_code, i)
-                        
-                        # If prerequisite exists in this semester and is invalid
                         if prereq_key in course_results and not course_results[prereq_key].get("is_valid", True):
-                            prereq_invalid = True
-                            invalid_semester = i
+                            logger.debug(
+                                f"Marking {course_code} in semester {semester_index} as invalid "
+                                f"because prerequisite {prereq_code} is invalid in semester {i}"
+                            )
+                            course_results[result_key]["is_valid"] = False
+                            course_results[result_key]["reason"] = (
+                                f"Prerequisite {prereq_code} is invalid"
+                            )
+                            changes_made = True
                             break
-                    
-                    if prereq_invalid:
-                        # Mark this course as invalid
-                        logger.debug(f"Marking {course_code} in semester {semester_index} as invalid because prerequisite {prereq_code} is invalid in semester {invalid_semester}")
-                        course_results[result_key]["is_valid"] = False
-                        course_results[result_key]["reason"] = f"Prerequisite {prereq_code} is invalid"
-                        changes_made = True
+                    if not course_results[result_key].get("is_valid", True):
                         break
-        
+
         logger.debug(f"Invalidation propagation completed after {iterations} iterations")
+    
     
     def calculate_cumulative_gpa(self, semesters, up_to_index):
         """

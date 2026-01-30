@@ -13,6 +13,43 @@ class UIComponents:
         st.markdown("Course validation and curriculum analysis system")
     
     @staticmethod
+    def _calculate_cumulative_gpa(semesters: List[Dict]) -> Optional[float]:
+        """
+        Calculate cumulative GPA from all completed courses (same method as flow chart).
+        
+        Args:
+            semesters: List of semester dictionaries containing course data
+            
+        Returns:
+            Calculated cumulative GPA, or None if no valid courses
+        """
+        if not semesters:
+            return None
+        
+        grade_points = {
+            "A": 4.0, "B+": 3.5, "B": 3.0, "C+": 2.5, "C": 2.0, 
+            "D+": 1.5, "D": 1.0, "F": 0.0
+        }
+        
+        total_points = 0.0
+        total_credits = 0
+        
+        for semester in semesters:
+            for course in semester.get("courses", []):
+                grade = course.get("grade", "").strip()
+                credits = course.get("credits", 0)
+                
+                # Skip grades that don't contribute to GPA (W, P, N, etc.)
+                if grade in grade_points and credits > 0:
+                    total_points += grade_points[grade] * credits
+                    total_credits += credits
+        
+        # Calculate GPA
+        if total_credits > 0:
+            return round(total_points / total_credits, 2)
+        return None
+    
+    @staticmethod
     def handle_sidebar_configuration(available_course_data: Dict) -> Optional[Dict]:
         """Handle sidebar configuration and return selected course data."""
         with st.sidebar:
@@ -102,7 +139,8 @@ class UIComponents:
     
     @staticmethod
     def display_student_info_and_validation(student_info: Dict, semesters: List[Dict], 
-                                          validation_results: List[Dict]):
+                                          validation_results: List[Dict], selected_course_data: Dict = None,
+                                          unidentified_courses: List[Dict] = None):
         """Display student information and validation results."""
         col1, col2 = st.columns([1, 1])
         
@@ -112,28 +150,13 @@ class UIComponents:
             st.write(f"**Name:** {student_info.get('name', 'Unknown')}")
             st.write(f"**Field of Study:** {student_info.get('field_of_study', 'Unknown')}")
             
-            # Display cumulative GPA from second-to-last semester
-            if semesters and len(semesters) >= 2:
-                second_last_semester = semesters[-2]
-                cum_gpa = second_last_semester.get('cum_gpa', 'N/A')
-                if cum_gpa != 'N/A' and cum_gpa is not None:
-                    st.write(f"**Cumulative GPA:** {cum_gpa:.2f}")
-            elif semesters and len(semesters) == 1:
-                # If only one semester, use that
-                latest_semester = semesters[-1]
-                cum_gpa = latest_semester.get('cum_gpa', 'N/A')
-                if cum_gpa != 'N/A' and cum_gpa is not None:
-                    st.write(f"**Cumulative GPA:** {cum_gpa:.2f}")
-
+            # Calculate and display cumulative GPA from semesters
+            cumulative_gpa = UIComponents._calculate_cumulative_gpa(semesters)
+            if cumulative_gpa is not None:
+                st.write(f"**Cumulative GPA:** {cumulative_gpa:.2f}")
+            else:
+                st.write(f"**Cumulative GPA:** N/A")
             
-            st.divider()
-            st.subheader("📚 Semester Summary")
-            for i, sem in enumerate(semesters):
-                semester_name = sem.get('semester', f'Semester {i+1}')
-                course_count = len(sem.get('courses', []))
-                total_credits = sem.get('total_credits', 0)
-                sem_gpa = sem.get('sem_gpa')
-                st.write(f"• **{semester_name}:** {course_count} courses, {total_credits} credits, GPA: {sem_gpa}")
         
         with col2:
             st.header("✅ Validation Results")
@@ -149,10 +172,84 @@ class UIComponents:
                 st.error(f"⚠️ **Issues Found:** {len(invalid_results)} invalid registrations")
             
             if invalid_results:
-                with st.expander("❌ Invalid Registrations", expanded=True):
+                with st.expander("❌ Invalid Registrations", expanded=False):
                     for result in invalid_results:
                         st.error(f"**{result.get('semester')}:** {result.get('course_code')} - {result.get('course_name')}")
                         st.write(f"   *Issue:* {result.get('reason')}")
+        
+        # Display Download Reports section below validation results (full width)
+        if selected_course_data:
+            st.divider()
+            st.header("📥 Download Reports")
+            
+            from components.report_generator import ReportGenerator
+            report_generator = ReportGenerator()
+            
+            col_dl1, col_dl2, col_dl3, col_dl4 = st.columns(4)
+            
+            with col_dl1:
+                report_generator._handle_comprehensive_report_download(student_info, semesters, validation_results, selected_course_data)
+            
+            with col_dl2:
+                report_generator._handle_flow_chart_download(student_info, semesters, validation_results, selected_course_data)
+            
+            with col_dl3:
+                report_generator._handle_text_report_download(student_info, semesters, validation_results, selected_course_data)
+            
+            with col_dl4:
+                report_generator._handle_json_export_download(student_info, semesters, validation_results, selected_course_data)
+        
+        # Display Semester Summary below Download Reports
+        st.divider()
+        
+        col_sem1, col_sem2 = st.columns([1, 1])
+        
+        with col_sem1:
+            st.subheader("📚 Semester Summary")
+            for i, sem in enumerate(semesters):
+                semester_name = sem.get('semester', f'Semester {i+1}')
+                course_count = len(sem.get('courses', []))
+                total_credits = sem.get('total_credits', 0)
+                
+                # Create expandable section for each semester
+                with st.expander(f"{semester_name} ({course_count} courses, {total_credits} credits)", expanded=False):
+                    courses = sem.get('courses', [])
+                    
+                    if courses:
+                        # Display courses in a nice format
+                        for course in courses:
+                            code = course.get('code', 'N/A')
+                            name = course.get('name', 'Unknown Course')
+                            grade = course.get('grade', 'N/A')
+                            credits = course.get('credits', 0)
+                            
+                            # Color code grades
+                            if grade in ["A", "B+", "B", "C+", "C", "D+", "D", "P"]:
+                                grade_color = "🟩"
+                            elif grade == "F":
+                                grade_color = "🟥"
+                            elif grade == "W":
+                                grade_color = "🟧"
+                            elif grade in ["N", "I"]:
+                                grade_color = "⬜"
+                            else:
+                                grade_color = "⬛"
+                            
+                            st.write(f"{grade_color} **{code}** - {name}")
+                            st.caption(f"Grade: **{grade}** | Credits: {credits}")
+
+                        
+                        # Show semester GPA if available
+                        semester_gpa = sem.get('sem_gpa')
+                        if semester_gpa is not None:
+                            st.info(f"📊 Semester GPA: **{semester_gpa:.2f}**")
+                    else:
+                        st.write("No courses found for this semester.")
+        
+        with col_sem2:
+            st.subheader("Database Expansion Opportunity")
+            if unidentified_courses:
+                UIComponents.display_unidentified_courses_info(unidentified_courses)
     
     @staticmethod
     def display_welcome_screen():
@@ -164,7 +261,7 @@ class UIComponents:
         with col_info1:
             st.markdown("### How to use:")
             st.markdown("""
-            1. **Select course catalog** (IE 2560 or 2565)
+            1. **Select course catalog**
             2. **Upload PDF transcript** in the sidebar
             3. **Wait for processing**
             4. **View interactive visualizations**
@@ -250,14 +347,37 @@ class UIComponents:
     
     @staticmethod
     def display_unidentified_courses_info(unidentified_courses: List[Dict]):
-        """Display information about unidentified courses."""
+        """Display information about unidentified courses grouped by semester."""
         if not unidentified_courses:
             return
         
         st.info(f"🔍 **Database Expansion Opportunity:** {len(unidentified_courses)} new courses found")
+        
+        # Group courses by semester
+        courses_by_semester = {}
+        for course in unidentified_courses:
+            semester = course.get('semester', 'Unknown Semester')
+            if semester not in courses_by_semester:
+                courses_by_semester[semester] = []
+            courses_by_semester[semester].append(course)
+        
         with st.expander("🔍 New Courses - Require Classification", expanded=True):
-            for course in unidentified_courses:
-                st.write(f"• **{course['code']}** - {course['name']} ({course['semester']}) - {course['credits']} credits")
+            # Sort semesters chronologically (basic sorting)
+            sorted_semesters = sorted(courses_by_semester.keys())
+            
+            for semester in sorted_semesters:
+                courses = courses_by_semester[semester]
+                st.markdown(f"**📅 {semester}**")
+                
+                # Display courses in this semester
+                for course in courses:
+                    st.write(f"**{course['code']}** - {course['name']} - {course['credits']} credits")
+                
+                # Show semester summary
+                total_credits = sum(course.get('credits', 0) for course in courses)
+                st.caption(f"*{len(courses)} courses, total {total_credits} credits*")
+                st.write("")  # Add spacing between semesters
+            
             st.info("💡 These courses are not yet in our classification system and would benefit from being added for more accurate analysis.")
 
 

@@ -1143,20 +1143,15 @@ class FlowChartHTMLGenerator:
         </script>
         """
 
-    def generate_header_section(self, student_info: Dict, template: Dict, semesters: List[Dict] = None) -> str:
+    def generate_header_section(self, student_info: Dict, template: Dict, 
+                               semesters: List[Dict] = None, analysis: Dict = None) -> str:
         """Generate the header section of the flow chart."""
-        # Get cumulative GPA from second-to-last semester
+        # Calculate cumulative GPA using the existing function
         gpa_text = ""
-        if semesters and len(semesters) >= 2:
-            second_last_semester = semesters[-2]
-            cum_gpa = second_last_semester.get('cum_gpa')
-            if cum_gpa is not None:
-                gpa_text = f" | <strong>Cumulative GPA:</strong> {cum_gpa:.2f}"
-        elif semesters and len(semesters) == 1:
-            latest_semester = semesters[-1]
-            cum_gpa = latest_semester.get('cum_gpa')
-            if cum_gpa is not None:
-                gpa_text = f" | <strong>Cumulative GPA:</strong> {cum_gpa:.2f}"
+        if semesters:
+            calculated_gpa = self._calculate_cumulative_gpa(semesters)
+            if calculated_gpa > 0:
+                gpa_text = f" | <strong>GPAX:</strong> {calculated_gpa:.2f}"
         
         return f"""
         <div class="header">
@@ -1164,13 +1159,37 @@ class FlowChartHTMLGenerator:
             <p><strong>Template:</strong> {template.get('curriculum_name', 'Unknown')} | 
                <strong>Student:</strong> {student_info.get('name', 'N/A')} ({student_info.get('id', 'N/A')}){gpa_text}</p>
         </div>
-        """
+        """    
+    
+    def _calculate_cumulative_gpa(self, semesters: List[Dict]) -> float:
+        """Calculate cumulative GPA from all completed courses."""
+        grade_points = {
+            "A": 4.0, "B+": 3.5, "B": 3.0, "C+": 2.5, "C": 2.0, 
+            "D+": 1.5, "D": 1.0, "F": 0.0
+        }
+        
+        total_points = 0.0
+        total_credits = 0
+        
+        for semester in semesters:
+            for course in semester.get("courses", []):
+                grade = course.get("grade", "").strip()
+                credits = course.get("credits", 0)
+                
+                # Skip grades that don't contribute to GPA (W, P, N, etc.)
+                if grade in grade_points and credits > 0:
+                    total_points += grade_points[grade] * credits
+                    total_credits += credits
+        
+        # Calculate GPA
+        if total_credits > 0:
+            return round(total_points / total_credits, 2)
+        return 0.0
     
     def generate_legend_section(self) -> str:
         """Generate the legend section."""
         return """
         <div class="flowchart-header">
-            <h3 class="flowchart-title">Curriculum Flow Chart</h3>
             <div class="flowchart-legend">
                 <div class="legend-item">
                     <div class="legend-box passed"></div>
@@ -1243,11 +1262,12 @@ class FlowChartHTMLGenerator:
         """
     
     def generate_complete_html(self, student_info: Dict, template: Dict, 
-                              curriculum_grid_html: str, electives_html: str = "", semesters: List[Dict] = None) -> str:
+                              curriculum_grid_html: str, electives_html: str = "", 
+                              semesters: List[Dict] = None, analysis: Dict = None) -> str:
         """Generate the complete HTML document."""
         css_styles = self.generate_css_styles()
         javascript = self.generate_javascript()
-        header_html = self.generate_header_section(student_info, template, semesters)
+        header_html = self.generate_header_section(student_info, template, semesters, analysis)
         legend_html = self.generate_legend_section()
         
         return f"""

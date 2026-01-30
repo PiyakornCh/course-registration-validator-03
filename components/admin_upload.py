@@ -193,7 +193,7 @@ def render_upload_page():
         st.header("📤 Upload CSV File")
     with col2:
         try:
-            with open("format.csv", "r", encoding="utf-8") as f:
+            with open("course_data/format.csv", "r", encoding="utf-8") as f:
                 format_csv_content = f.read()
             
             st.markdown("<br>", unsafe_allow_html=True)  # Add spacing to align with header
@@ -207,14 +207,14 @@ def render_upload_page():
                 use_container_width=True
             )
         except FileNotFoundError:
-            st.info("💡 format.csv not found")
+            st.info("💡 format.csv not found in course_data folder")
     
     st.markdown("Upload your course curriculum CSV file to convert it to JSON format")
     
     uploaded_file = st.file_uploader(
         "Choose a CSV file",
         type=['csv'],
-        help="File must follow the format specified in format.csv"
+        help="File must follow the format specified in format.csv (available for download above)"
     )
     
     if uploaded_file is not None:

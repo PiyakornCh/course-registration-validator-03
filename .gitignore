@@ -24,6 +24,12 @@ logs/
 reports/
 *.log
 
+# Streamlit secrets (contains sensitive information)
+.streamlit/secrets.toml
+
+# Legacy admin password file
+admin_password.txt
+
 # OS specific files
 .DS_Store
 Thumbs.db

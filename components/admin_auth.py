@@ -6,33 +6,69 @@ import hashlib
 import os
 import re
 
-PASSWORD_FILE = "admin_password.txt"
-
 def hash_password(password):
     """Hash password using SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def load_password():
-    """Load password from file"""
-    if os.path.exists(PASSWORD_FILE):
-        with open(PASSWORD_FILE, 'r') as f:
-            return f.read().strip()
-    else:
-        # Default password: admin
-        default_password = hash_password("admin")
-        with open(PASSWORD_FILE, 'w') as f:
-            f.write(default_password)
-        return default_password
+    """Load password from Streamlit secrets"""
+    try:
+        # Try to load from secrets.toml
+        return st.secrets["admin"]["password_hash"]
+    except (KeyError, FileNotFoundError):
+        # Fallback: check for legacy password file
+        legacy_file = "admin_password.txt"
+        if os.path.exists(legacy_file):
+            with open(legacy_file, 'r') as f:
+                return f.read().strip()
+        else:
+            # Default password: admin (hashed)
+            return hash_password("admin")
 
 def save_password(password):
-    """Save new password"""
-    with open(PASSWORD_FILE, 'w') as f:
-        f.write(hash_password(password))
+    """Save new password to secrets.toml"""
+    import toml
+    
+    # Create secrets directory if it doesn't exist
+    secrets_dir = ".streamlit"
+    if not os.path.exists(secrets_dir):
+        os.makedirs(secrets_dir)
+    
+    secrets_file = os.path.join(secrets_dir, "secrets.toml")
+    
+    # Load existing secrets or create new structure
+    try:
+        if os.path.exists(secrets_file):
+            with open(secrets_file, 'r') as f:
+                secrets = toml.load(f)
+        else:
+            secrets = {}
+    except:
+        secrets = {}
+    
+    # Update admin password
+    if "admin" not in secrets:
+        secrets["admin"] = {}
+    
+    secrets["admin"]["password_hash"] = hash_password(password)
+    secrets["admin"]["username"] = "admin"
+    
+    # Write back to file
+    with open(secrets_file, 'w') as f:
+        toml.dump(secrets, f)
+
+def get_username():
+    """Get admin username from secrets"""
+    try:
+        return st.secrets["admin"]["username"]
+    except (KeyError, FileNotFoundError):
+        return "admin"  # Default username
 
 def check_login(username, password):
     """Check login credentials"""
     stored_password = load_password()
-    return username == "admin" and hash_password(password) == stored_password
+    stored_username = get_username()
+    return username == stored_username and hash_password(password) == stored_password
 
 def validate_password_strength(password):
     """

@@ -11,6 +11,7 @@ Comprehensive Streamlit web app for Industrial Engineering students at Kasetsart
 - **Interactive Flow Chart** - Visual curriculum progression
 - **Credit Analysis** - Track progress by course categories
 - **Smart Excel Reports** - Detailed academic analysis
+- **Admin Panel** - Comprehensive curriculum data management system
 
 ### 🚀 Planned Features
 - **Course Recommendation Engine** - Suggest optimal course sequences
@@ -23,15 +24,75 @@ Comprehensive Streamlit web app for Industrial Engineering students at Kasetsart
 
 ```bash
 pip install -r requirements.txt
-streamlit run streamlit_app.py
+streamlit run Home.py
 ```
 
 ## Usage
 
+### For Students
 1. Upload PDF transcript in sidebar
 2. Curriculum is automatically selected based on your student ID
 3. View validation results and progress analysis
 4. Download interactive reports and flow charts
+
+### For Administrators
+1. Navigate to **Admin Home** from the multipage menu
+2. Login with credentials (default: username `admin`, password `admin`)
+3. Use the admin panel to manage curriculum data
+
+## Admin Panel
+
+The admin panel provides a comprehensive curriculum data management system with the following features:
+
+### 🏠 Admin Dashboard
+- **Statistics Overview** - Total curriculums, current user status
+- **Recent Curriculums** - Quick access to latest curriculum data
+- **Quick Navigation** - Direct links to main features
+
+### 📤 Upload Data
+**Features:**
+- CSV file upload and validation
+- Automatic conversion to JSON format
+- Data integrity checking
+- Curriculum data storage
+
+**Usage:**
+1. Download the format template (format.csv)
+2. Prepare your data according to the template
+3. Upload the CSV file
+4. Specify curriculum year (e.g., 2565)
+5. Click **"💾 Save Data"**
+
+### 📂 Manage Curriculums
+**Features:**
+- View all existing curriculums
+- Inspect curriculum details and course lists
+- View raw JSON files
+- Delete unwanted curriculums
+
+**Usage:**
+1. Select curriculum to view
+2. Expand to see detailed information
+3. Use action buttons to view data or delete
+
+### 🔐 Security Features
+- **Authentication System** - Secure login required for all admin functions
+- **Session Management** - Automatic logout on navigation away from admin pages
+- **Password Management** - Change password functionality with strength requirements
+- **Secure Storage** - Passwords stored in `.streamlit/secrets.toml` (excluded from version control)
+
+#### Password Requirements
+- At least 8 characters
+- Contains digits (0-9)
+- Contains lowercase letters (a-z)
+- Contains uppercase letters (A-Z)
+- Contains special characters (!@#$%^&* etc.)
+
+### Admin Panel Access
+1. **Start Application**: Run `streamlit run Home.py`
+2. **Navigate to Admin**: Click "Admin Home" in the multipage menu
+3. **Login**: Use credentials (default: username `admin`, password `admin`)
+4. **Navigate**: Use sidebar menu to switch between features
 
 ## Course Data Structure
 
@@ -46,7 +107,8 @@ course_data/
 ├── B-IE-2565/
 │   ├── courses.json      # Course definitions for 2565 curriculum  
 │   └── template.json     # Mandatory course structure for 2565
-└── gen_ed_courses.json   # Shared general education courses
+├── gen_ed_courses.json   # Shared general education courses
+└── format.csv           # CSV template for data upload
 ```
 
 ### Auto-Selection Logic
@@ -83,6 +145,21 @@ The system automatically selects the appropriate curriculum based on student ID:
    - `template.json` (copy from existing and modify)
 3. Update the logic in `utils/curriculum_selector.py` if needed
 
+### Admin Panel Architecture
+
+The admin panel uses Streamlit's multipage architecture with the following structure:
+
+```
+pages/
+└── Admin_Home.py          # Main admin interface with sidebar navigation
+```
+
+**Key Components:**
+- **Single Page Design** - All admin functions in one page with sidebar navigation
+- **Session Management** - Secure authentication and session handling
+- **Component Integration** - Reuses existing `components/admin_*` modules
+- **Responsive UI** - Clean interface with gradient styling and intuitive navigation
+
 ### Usage Examples
 
 ```python
@@ -109,17 +186,50 @@ data = load_curriculum_data("B-IE-2560")
 - ✅ **Easy Updates**: Just replace files in the relevant folder
 - ✅ **No Config**: No configuration files to maintain
 - ✅ **Backward Compatible**: Existing functionality preserved
+- ✅ **Admin Friendly**: Easy-to-use web interface for data management
+
+## Troubleshooting
+
+### Common Issues
+
+**1. Cannot Login to Admin Panel**
+- Check username and password (default: admin/admin)
+- Try refreshing the web page
+- Check if `.streamlit/secrets.toml` file exists with admin credentials
+- If migrating from old version, the system will automatically detect legacy `admin_password.txt`
+
+**2. CSV Upload Fails**
+- Verify file format matches format.csv template
+- Check file encoding (should be UTF-8)
+- Ensure all required columns are present
+
+**3. Curriculums Not Displaying**
+- Check `course_data` folder structure
+- Verify `courses.json` and `template.json` files exist
+- Refresh the web page
+
+**4. Auto-Selection Not Working**
+- Ensure PDF contains readable student ID
+- Check if student ID follows expected format
+- Try manual curriculum selection as fallback
 
 ## File Structure
 
 ```
-├── streamlit_app.py        # Main application
-├── validator.py           # Course validation logic
-├── course_data/          # Course catalogs (JSON)
-│   ├── B-IE-2560/       # 2560 curriculum data
-│   ├── B-IE-2565/       # 2565 curriculum data
-│   └── gen_ed_courses.json
-└── utils/               # PDF processing & report generation
+├── Home.py                # Main application
+├── pages/
+│   └── Admin_Home.py     # Admin panel interface
+├── validator.py          # Course validation logic
+├── components/           # Reusable components
+│   ├── admin_auth.py    # Authentication system
+│   ├── admin_upload.py  # File upload handling
+│   ├── admin_manage.py  # Curriculum management
+│   └── ...
+├── course_data/         # Course catalogs (JSON)
+│   ├── B-IE-2560/      # 2560 curriculum data
+│   ├── B-IE-2565/      # 2565 curriculum data
+│   └── format.csv      # Upload template
+└── utils/              # PDF processing & utilities
     ├── curriculum_selector.py
     └── course_data_loader.py
 ```
@@ -133,4 +243,4 @@ data = load_curriculum_data("B-IE-2560")
 - OpenPyXL
 
 ---
-*Comprehensive academic planning tool for KU Industrial Engineering students*
+*Comprehensive academic planning tool for KU Industrial Engineering students with administrative data management capabilities*

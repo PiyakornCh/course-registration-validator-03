@@ -155,6 +155,39 @@ def main():
         layout="wide"
     )
     
+    # Initialize session state for admin
+    if 'admin_logged_in' not in st.session_state:
+        st.session_state.admin_logged_in = False
+    if 'show_change_password' not in st.session_state:
+        st.session_state.show_change_password = False
+    
+    # Custom CSS for multipage navigation
+    st.markdown("""
+    <style>
+    /* Style specifically for multipage navigation only */
+    div[data-testid="stSidebarNav"] ul li a {
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Alternative selector for page navigation in sidebar */
+    .css-1544g2n a {
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+    }
+    
+    /* Reset other elements to normal weight */
+    .stSelectbox label, .stSelectbox div {
+        font-weight: normal !important;
+    }
+    
+    /* Ensure selectbox options are normal weight */
+    .stSelectbox > div > div > div {
+        font-weight: normal !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Initialize session manager
     session_manager = SessionManager()
     session_manager.initialize_session_state()
@@ -166,12 +199,6 @@ def main():
     
     # Display header
     UIComponents.display_header()
-    
-    # Add Admin button in sidebar
-    with st.sidebar:
-        if st.button("🔐 Admin Panel", use_container_width=True, type="secondary"):
-            st.session_state.admin_mode = True
-            st.rerun()
     
     # Load course data
     try:
@@ -355,11 +382,3 @@ def _display_results(session_manager, selected_course_data):
             
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-

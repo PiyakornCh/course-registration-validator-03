@@ -275,9 +275,6 @@ class CourseAnalyzer:
         unidentified_courses = self.analyze_unidentified_courses(semesters, template)
         session_manager.set_unidentified_count(len(unidentified_courses))
         
-        # Display unidentified courses info
-        UIComponents.display_unidentified_courses_info(unidentified_courses)
-        
         # Calculate and display credit summary
         credit_summary = self.calculate_credit_summary(semesters)
         UIComponents.display_credit_summary(credit_summary)

@@ -17,9 +17,9 @@ class FlowChartGenerator:
         self.data_analyzer = FlowChartDataAnalyzer()
         self.html_generator = FlowChartHTMLGenerator()
     
-    def load_course_categories_for_flow(self):
+    def load_course_categories_for_flow(self, curriculum_name: str):
         """Load course categories for the flow generator."""
-        return self.data_analyzer.load_course_categories()
+        return self.data_analyzer.load_course_categories_for_curriculum(curriculum_name)
     
     def load_curriculum_template_for_flow(self, catalog_name: str):
         """Load curriculum template."""
@@ -94,8 +94,8 @@ class FlowChartGenerator:
         """Create template-based HTML flow chart with JavaScript interactivity."""
         
         # Load data
-        course_categories = self.load_course_categories_for_flow()
         curriculum_name = selected_course_data.get('curriculum_folder', 'B-IE-2565') if selected_course_data else 'B-IE-2565'
+        course_categories = self.load_course_categories_for_flow(curriculum_name)
         template = self.load_curriculum_template_for_flow(curriculum_name)
         
         if not template:
@@ -141,7 +141,7 @@ class FlowChartGenerator:
         
         # Generate complete HTML
         complete_html = self.html_generator.generate_complete_html(
-            student_info, template, curriculum_grid_html, electives_html, semesters
+            student_info, template, curriculum_grid_html, electives_html, semesters, analysis
         )
         
         return complete_html, 0
@@ -209,8 +209,6 @@ class FlowChartGenerator:
     def generate_and_display_flow_chart(self, student_info: Dict, semesters: List[Dict], 
                                        validation_results: List[Dict], selected_course_data: Dict):
         """Generate and display the flow chart in Streamlit."""
-        st.divider()
-        st.header("Visualizations & Downloads")
         
         try:
             with st.spinner("Generating curriculum flow chart..."):
@@ -218,41 +216,8 @@ class FlowChartGenerator:
                     student_info, semesters, validation_results, selected_course_data
                 )
             
-            st.subheader("Curriculum Flow Chart")
-            st.markdown("Interactive curriculum template with progress tracking and prerequisite visualization")
+            # Flow chart generated successfully but not displayed automatically
             
-            if flow_html and len(flow_html.strip()) > 0:
-                # Auto popup - opens immediately when page loads
-                auto_popup_js = f"""
-                <script>
-                setTimeout(function() {{
-                    const flowWindow = window.open('', 'flowchart', 'width=1400,height=900,scrollbars=yes,resizable=yes');
-                    if (flowWindow) {{
-                        flowWindow.document.write(`{flow_html.replace('`', '\\`')}`);
-                        flowWindow.document.close();
-                        flowWindow.focus();
-                    }}
-                }}, 500);
-                </script>
-                """
-                components.html(auto_popup_js, height=0)
-                
-                st.success("Flow chart opened in new window")
-                if flow_unidentified > 0:
-                    st.info(f"Note: {flow_unidentified} courses require classification")
-                
-                # Backup button in case popup was blocked
-                st.download_button(
-                    label="Re-open Flow Chart (if popup blocked)",
-                    data=flow_html.encode('utf-8'),
-                    file_name=f"curriculum_flow_{student_info.get('id', 'student')}.html",
-                    mime="text/html",
-                    help="Backup option if popup was blocked by browser"
-                )
-                
-            else:
-                st.error("Unable to generate flow chart")
-                
         except Exception as e:
             st.error(f"Error generating flow chart: {e}")
             with st.expander("Debug Information"):

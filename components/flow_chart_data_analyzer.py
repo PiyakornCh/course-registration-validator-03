@@ -91,6 +91,69 @@ class FlowChartDataAnalyzer:
         self.course_categories = categories
         return categories
     
+    def load_course_categories_for_curriculum(self, curriculum_name: str) -> Dict:
+        """Load course categories for a specific curriculum only."""
+        course_data_dir = Path(__file__).parent.parent / "course_data"
+        
+        categories = {
+            "ie_core": {},
+            "technical_electives": {},
+            "gen_ed": {
+                "wellness": {},
+                "wellness_PE": {},
+                "entrepreneurship": {},
+                "language_communication_thai": {},
+                "language_communication_foreigner": {},
+                "language_communication_computer": {},
+                "thai_citizen_global": {},
+                "aesthetics": {}
+            },
+            "all_courses": {}
+        }
+        
+        # Load IE courses from specific curriculum folder only
+        curriculum_dir = course_data_dir / curriculum_name
+        courses_file = curriculum_dir / "courses.json"
+        
+        if courses_file.exists():
+            try:
+                with open(courses_file, 'r', encoding='utf-8') as f:
+                    ie_data = json.load(f)
+                    
+                    for course in ie_data.get("industrial_engineering_courses", []):
+                        if course["code"] not in categories["all_courses"]:
+                            if course.get("technical_electives", False):
+                                categories["technical_electives"][course["code"]] = course
+                            else:
+                                categories["ie_core"][course["code"]] = course
+                            categories["all_courses"][course["code"]] = course
+                    
+                    for course in ie_data.get("other_related_courses", []):
+                        if course["code"] not in categories["all_courses"]:
+                            categories["ie_core"][course["code"]] = course  
+                            categories["all_courses"][course["code"]] = course
+                            
+            except Exception as e:
+                print(f"Error loading {courses_file}: {e}")
+        
+        # Load Gen-Ed courses (same for all curricula)
+        gen_ed_file = course_data_dir / "gen_ed_courses.json"
+        if gen_ed_file.exists():
+            try:
+                with open(gen_ed_file, 'r', encoding='utf-8') as f:
+                    gen_ed_data = json.load(f)
+                    gen_ed_courses = gen_ed_data.get("gen_ed_courses", {})
+                    
+                    for subcategory, courses_list in gen_ed_courses.items():
+                        if subcategory in categories["gen_ed"]:
+                            for course in courses_list:
+                                categories["gen_ed"][subcategory][course["code"]] = course
+                                categories["all_courses"][course["code"]] = course
+            except Exception as e:
+                print(f"Error loading gen_ed_courses.json: {e}")
+        
+        return categories
+    
     def load_curriculum_template(self, catalog_name: str) -> Dict:
         """Load curriculum template from folder structure."""
         course_data_dir = Path(__file__).parent.parent / "course_data"

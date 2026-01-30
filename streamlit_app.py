@@ -325,12 +325,7 @@ def _display_results(session_manager, selected_course_data):
         # Use cached validation results
         validation_results = session_manager.get_validation_results()
     
-    # Display student info and validation results
-    UIComponents.display_student_info_and_validation(
-        student_info, semesters, validation_results
-    )
-    
-    # Initialize course analyzer
+    # Initialize course analyzer and analyze unidentified courses first
     course_analyzer = CourseAnalyzer()
     
     # Load curriculum template for proper classification
@@ -338,17 +333,20 @@ def _display_results(session_manager, selected_course_data):
     curriculum_name = selected_course_data.get('curriculum_folder', 'B-IE-2565') if selected_course_data else 'B-IE-2565'
     template = flow_generator.load_curriculum_template_for_flow(curriculum_name)
     
+    # Analyze unidentified courses
+    unidentified_courses = course_analyzer.analyze_unidentified_courses(semesters, template)
+    session_manager.set_unidentified_count(len(unidentified_courses))
+    
+    # Display student info and validation results (with unidentified courses)
+    UIComponents.display_student_info_and_validation(
+        student_info, semesters, validation_results, selected_course_data, unidentified_courses
+    )
+    
     # Analyze courses and display summary with template context
     course_analyzer.analyze_and_display_courses(semesters, template)
     
     # Generate and display visualizations (reuse the flow_generator)
     flow_generator.generate_and_display_flow_chart(
-        student_info, semesters, validation_results, selected_course_data
-    )
-    
-    # Handle downloads
-    report_generator = ReportGenerator()
-    report_generator.display_download_section(
         student_info, semesters, validation_results, selected_course_data
     )
     

@@ -11,6 +11,38 @@ class ComprehensiveReportGenerator:
         self.course_categories = None
         self.template = None
     
+    def _calculate_gpa(self, analysis: Dict, semesters: List[Dict] = None) -> float:
+        """Calculate GPA from all completed courses (same method as flow chart)."""
+        grade_points = {
+            "A": 4.0, "B+": 3.5, "B": 3.0, "C+": 2.5, "C": 2.0, 
+            "D+": 1.5, "D": 1.0, "F": 0.0
+        }
+        
+        total_points = 0.0
+        total_credits = 0
+        
+        # Use semesters data if available (same as flow chart)
+        if semesters:
+            for semester in semesters:
+                for course in semester.get("courses", []):
+                    grade = course.get("grade", "").strip()
+                    credits = course.get("credits", 0)
+                    
+                    # Skip grades that don't contribute to GPA (W, P, N, etc.)
+                    if grade in grade_points and credits > 0:
+                        total_points += grade_points[grade] * credits
+                        total_credits += credits
+        else:
+            # Fallback to analysis data if semesters not available
+            for course_data in analysis['completed_courses'].values():
+                grade = course_data.get('grade', 'F')
+                credits = course_data.get('credits', 3)
+                if grade in grade_points:
+                    total_points += grade_points[grade] * credits
+                    total_credits += credits
+        
+        return round(total_points / total_credits, 2) if total_credits > 0 else 0.0
+    
     def generate_comprehensive_report(self, student_info: Dict, semesters: List[Dict], 
                                     validation_results: List[Dict], selected_course_data: Dict) -> str:
         """Generate a comprehensive HTML report with analysis and recommendations."""
@@ -21,7 +53,7 @@ class ComprehensiveReportGenerator:
         
         curriculum_name = selected_course_data.get('curriculum_folder', 'B-IE-2565')
         self.template = flow_generator.load_curriculum_template_for_flow(curriculum_name)
-        self.course_categories = flow_generator.load_course_categories_for_flow()
+        self.course_categories = flow_generator.load_course_categories_for_flow(curriculum_name)
         
         if not self.template:
             return "Error: Could not load curriculum template"
@@ -31,13 +63,12 @@ class ComprehensiveReportGenerator:
         
         # Generate report sections
         html_content = self._generate_html_structure()
-        html_content += self._generate_header_section(student_info, curriculum_name, semesters)
+        html_content += self._generate_header_section(student_info, curriculum_name, semesters, analysis)
         html_content += self._generate_executive_summary(student_info, semesters, analysis)
         html_content += self._generate_academic_progress_section(analysis, semesters)
         html_content += self._generate_course_completion_analysis(analysis, semesters)
         html_content += self._generate_validation_issues_section(validation_results)
         html_content += self._generate_graduation_requirements_section(analysis)
-        html_content += self._generate_recommendations_section(analysis, semesters)
         html_content += self._generate_semester_planning_section(analysis, semesters)
         html_content += self._generate_footer()
         
@@ -63,7 +94,7 @@ class ComprehensiveReportGenerator:
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                     line-height: 1.6;
                     color: #333;
-                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                    background: #D9D9D9;
                     min-height: 100vh;
                 }
                 
@@ -74,8 +105,8 @@ class ComprehensiveReportGenerator:
                 }
                 
                 .report-header {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
+                    background: white;
+                    color: #333;
                     padding: 40px;
                     border-radius: 15px;
                     margin-bottom: 30px;
@@ -86,12 +117,14 @@ class ComprehensiveReportGenerator:
                 .report-header h1 {
                     font-size: 2.5em;
                     margin-bottom: 10px;
-                    font-weight: 300;
+                    font-weight: 600;
+                    color: #A73239;
                 }
                 
                 .report-header .subtitle {
                     font-size: 1.2em;
                     opacity: 0.9;
+                    color: #333;
                 }
                 
                 .section {
@@ -103,7 +136,7 @@ class ComprehensiveReportGenerator:
                 }
                 
                 .section-header {
-                    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+                    background: linear-gradient(135deg, #c94c54 0%, #a73239 100%);
                     color: white;
                     padding: 20px 30px;
                     font-size: 1.4em;
@@ -122,8 +155,8 @@ class ComprehensiveReportGenerator:
                 }
                 
                 .summary-card {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
+                    background: #e8e8e8;
+                    color: #A73239;
                     padding: 25px;
                     border-radius: 12px;
                     text-align: center;
@@ -134,11 +167,13 @@ class ComprehensiveReportGenerator:
                     font-size: 2.2em;
                     margin-bottom: 5px;
                     font-weight: 700;
+                    color: #333;
                 }
                 
                 .summary-card p {
                     font-size: 1.1em;
                     opacity: 0.9;
+                    color: #666;
                 }
                 
                 .progress-bar {
@@ -151,7 +186,7 @@ class ComprehensiveReportGenerator:
                 }
                 
                 .progress-fill {
-                    background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+                    background: linear-gradient(90deg, #4caf50 0%, #26a69a 100%);
                     height: 100%;
                     border-radius: 25px;
                     display: flex;
@@ -162,9 +197,32 @@ class ComprehensiveReportGenerator:
                     transition: width 0.3s ease;
                 }
                 
-                .status-good { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-                .status-warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-                .status-critical { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); }
+                .status-good { 
+                    background: linear-gradient(135deg, #4caf50 0%, #26a69a 100%); 
+                    color: white;
+                }
+                .status-good h3,
+                .status-good p {
+                    color: white;
+                }
+                
+                .status-warning { 
+                    background: linear-gradient(135deg, #ffca28 0%, #ffa726 100%); 
+                    color: white;
+                }
+                .status-warning h3,
+                .status-warning p {
+                    color: white;
+                }
+                
+                .status-critical { 
+                    background: #b85c63;
+                    color: white;
+                }
+                .status-critical h3,
+                .status-critical p {
+                    color: white;
+                }
                 
                 .course-grid {
                     display: grid;
@@ -174,18 +232,19 @@ class ComprehensiveReportGenerator:
                 }
                 
                 .course-item {
-                    background: #f8f9fa;
-                    padding: 15px;
+                    background: #ffffff;
+                    padding: 10px 15px;
                     border-radius: 8px;
-                    border-left: 4px solid #4facfe;
+                    border-left: 4px solid #c94c54;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
                 }
                 
-                .course-item.completed { border-left-color: #00d4aa; }
-                .course-item.failed { border-left-color: #ff6b6b; }
-                .course-item.current { border-left-color: #4facfe; }
+                .course-item.completed { border-left-color: #28a745; background: #f8fff9; }
+                .course-item.failed { border-left-color: #dc3545; background: #fff8f8; }
+                .course-item.current { border-left-color: #c94c54; background: #ffffff; }
                 
                 .recommendation {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: linear-gradient(135deg, #c94c54 0%, #a73239 100%);
                     color: white;
                     padding: 20px;
                     border-radius: 12px;
@@ -198,18 +257,19 @@ class ComprehensiveReportGenerator:
                 }
                 
                 .action-item {
-                    background: #e8f4fd;
-                    border-left: 4px solid #4facfe;
+                    background: #fff5f5;
+                    border-left: 4px solid #c94c54;
                     padding: 15px;
                     margin: 10px 0;
                     border-radius: 0 8px 8px 0;
                 }
                 
                 .semester-plan {
-                    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+                    background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
                     padding: 20px;
                     border-radius: 12px;
                     margin: 15px 0;
+                    border: 2px solid #c94c54;
                 }
                 
                 .alert {
@@ -240,31 +300,19 @@ class ComprehensiveReportGenerator:
             <div class="container">
         """
     
-    def _generate_header_section(self, student_info: Dict, curriculum_name: str, semesters: List[Dict] = None) -> str:
+    def _generate_header_section(self, student_info: Dict, curriculum_name: str, semesters: List[Dict], analysis: Dict) -> str:
         """Generate the report header."""
-        current_date = datetime.now().strftime("%B %d, %Y")
         
-        # Get cumulative GPA from second-to-last semester
-        gpa_text = ""
-        if semesters and len(semesters) >= 2:
-            second_last_semester = semesters[-2]
-            cum_gpa = second_last_semester.get('cum_gpa')
-            if cum_gpa is not None:
-                gpa_text = f" • GPA: {cum_gpa:.2f}"
-        elif semesters and len(semesters) == 1:
-            latest_semester = semesters[-1]
-            cum_gpa = latest_semester.get('cum_gpa')
-            if cum_gpa is not None:
-                gpa_text = f" • GPA: {cum_gpa:.2f}"
+        # Calculate GPA from completed courses
+        cum_gpa = self._calculate_gpa(analysis, semesters)
+        gpa_text = f" | <strong>GPAX:</strong> {cum_gpa:.2f}" if cum_gpa > 0 else ""
         
         return f"""
         <div class="report-header">
             <h1>Academic Progress Report</h1>
             <div class="subtitle">
-                <strong>{student_info.get('name', 'Student Name')}</strong> • 
-                ID: {student_info.get('id', 'N/A')} • 
-                {curriculum_name}{gpa_text} • 
-                Generated: {current_date}
+                <strong>Template:</strong> {curriculum_name} | 
+                <strong>Student:</strong> {student_info.get('name', 'Student Name')} ({student_info.get('id', 'N/A')}) {gpa_text}
             </div>
         </div>
         """
@@ -342,28 +390,26 @@ class ComprehensiveReportGenerator:
     def _generate_academic_progress_section(self, analysis: Dict, semesters: List[Dict]) -> str:
         """Generate detailed academic progress analysis."""
         
-        # Calculate progress by year
-        year_progress = {}
-        for semester in semesters:
-            year = semester.get('year_int', 0)
-            if year and year > 1900:
-                if year not in year_progress:
-                    year_progress[year] = {'courses': 0, 'credits': 0}
-                year_progress[year]['courses'] += len(semester.get('courses', []))
-                year_progress[year]['credits'] += semester.get('total_credits', 0)
-        
         progress_html = """
         <div class="section">
             <div class="section-header">📈 Academic Progress Timeline</div>
             <div class="section-content">
         """
         
-        for year in sorted(year_progress.keys()):
-            data = year_progress[year]
+        # Group semesters by year and show each semester with GPA
+        for semester in semesters:
+            year = semester.get('year_int', 0)
+            term = semester.get('term', '')
+            courses_count = len(semester.get('courses', []))
+            credits = semester.get('total_credits', 0)
+            
+            # Format semester name
+            semester_name = f"{year}/{term}" if year and term else semester.get('semester', 'Unknown')
+                        
             progress_html += f"""
             <div class="course-item">
-                <h4>Academic Year {year}</h4>
-                <p><strong>{data['courses']} courses</strong> • <strong>{data['credits']} credits</strong></p>
+                <h4>{semester_name}</h4>
+                <p>{courses_count} courses • {credits} credits</p>
             </div>
             """
         
@@ -496,73 +542,6 @@ class ComprehensiveReportGenerator:
             </div>
         </div>
         """
-    
-    def _generate_recommendations_section(self, analysis: Dict, semesters: List[Dict]) -> str:
-        """Generate personalized recommendations."""
-        
-        recommendations = []
-        
-        # Check for failed courses
-        if analysis['failed_courses']:
-            recommendations.append({
-                'title': 'Address Failed Courses',
-                'content': f'You have {len(analysis["failed_courses"])} failed courses that may need to be retaken. Consider retaking these courses to improve your GPA and meet graduation requirements.',
-                'priority': 'high'
-            })
-        
-        # Check elective progress
-        for category, data in analysis['elective_analysis'].items():
-            if data['completed'] < data['required']:
-                remaining = data['required'] - data['completed']
-                category_name = category.replace('_', ' ').title()
-                recommendations.append({
-                    'title': f'Complete {category_name} Requirements',
-                    'content': f'You need {remaining} more credits in {category_name} to meet graduation requirements.',
-                    'priority': 'medium'
-                })
-        
-        # Check for schedule deviations
-        if len(analysis['deviations']) > 5:
-            recommendations.append({
-                'title': 'Review Course Sequencing',
-                'content': 'Consider meeting with an academic advisor to optimize your course sequence and ensure timely graduation.',
-                'priority': 'low'
-            })
-        
-        if not recommendations:
-            recommendations.append({
-                'title': 'Excellent Progress!',
-                'content': 'You are making excellent progress toward graduation. Continue with your current academic plan.',
-                'priority': 'good'
-            })
-        
-        rec_html = """
-        <div class="section">
-            <div class="section-header">💡 Personalized Recommendations</div>
-            <div class="section-content">
-        """
-        
-        for rec in recommendations:
-            priority_class = {
-                'high': 'status-critical',
-                'medium': 'status-warning', 
-                'low': 'status-good',
-                'good': 'status-good'
-            }.get(rec['priority'], 'status-good')
-            
-            rec_html += f"""
-            <div class="recommendation {priority_class}">
-                <h4>{rec['title']}</h4>
-                <p>{rec['content']}</p>
-            </div>
-            """
-        
-        rec_html += """
-            </div>
-        </div>
-        """
-        
-        return rec_html
     
     def _generate_semester_planning_section(self, analysis: Dict, semesters: List[Dict]) -> str:
         """Generate next semester planning suggestions."""

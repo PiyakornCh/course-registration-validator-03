@@ -352,7 +352,7 @@ class ComprehensiveReportGenerator:
             standing = "Satisfactory"
             standing_class = "status-warning"
         else:
-            standing = "Needs Improvement"
+            standing = "Critical"
             standing_class = "status-critical"
         
         return f"""

@@ -1004,6 +1004,24 @@
         "name": "English for Careers",
         "credits": "3(3-0-6)",
         "category": "language_communication"
+      },
+      {
+        "code": "01355111",
+        "name": "Foundation English I",
+        "credits": "3(3-0-6)",
+        "category": "language_communication"
+      },
+            {
+        "code": "01355112",
+        "name": "Foundation English II",
+        "credits": "3(3-0-6)",
+        "category": "language_communication"
+      },
+      {
+        "code": "01355113",
+        "name": "Foundation English III",
+        "credits": "3(3-0-6)",
+        "category": "language_communication"
       }
     ],
     "language_communication_computer": [
@@ -1172,7 +1190,43 @@
         "name": "Knowledge of the Land",
         "credits": "2(2-0-4)",
         "category": "thai_citizen_global"
-      }
+      },
+      {
+        "code": "01001317",
+        "name": "Kings and State Leaders on Agricultural Sector Develop",
+        "credits": "3(3-0-6)",
+        "category": "thai_citizen_global"
+      },
+      {
+        "code": "01009102",
+        "name": "Humans and Natural Resources",
+        "credits": "3(3-0-6)",
+        "category": "thai_citizen_global"
+      },
+      {
+        "code": "01015202",
+        "name": "Thai Livelihood Agriculture",
+        "credits": "3(3-0-6)",
+        "category": "thai_citizen_global"
+      },
+      {
+        "code": "01455101",
+        "name": "Global Politics in Daily Life",
+        "credits": "3(3-0-6)",
+        "category": "thai_citizen_global"
+      },
+      {
+        "code": "01999141",
+        "name": "Man and Society",
+        "credits": "3(3-0-6)",
+        "category": "thai_citizen_global"
+      },
+      {
+        "code": "01999031",
+        "name": "The Heritage of World Civilizations",
+        "credits": "3(3-0-6)",
+        "category": "thai_citizen_global"
+      }      
     ]
   }
 }

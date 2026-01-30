@@ -50,6 +50,42 @@ class UIComponents:
         return None
     
     @staticmethod
+    def _calculate_semester_gpa(courses: List[Dict]) -> Optional[float]:
+        """
+        Calculate GPA for a single semester from course data.
+        
+        Args:
+            courses: List of course dictionaries for the semester
+            
+        Returns:
+            Calculated semester GPA, or None if no valid courses
+        """
+        if not courses:
+            return None
+        
+        grade_points = {
+            "A": 4.0, "B+": 3.5, "B": 3.0, "C+": 2.5, "C": 2.0, 
+            "D+": 1.5, "D": 1.0, "F": 0.0
+        }
+        
+        total_points = 0.0
+        total_credits = 0
+        
+        for course in courses:
+            grade = course.get("grade", "").strip()
+            credits = course.get("credits", 0)
+            
+            # Skip grades that don't contribute to GPA (W, P, N, etc.)
+            if grade in grade_points and credits > 0:
+                total_points += grade_points[grade] * credits
+                total_credits += credits
+        
+        # Calculate semester GPA
+        if total_credits > 0:
+            return round(total_points / total_credits, 2)
+        return None
+    
+    @staticmethod
     def handle_sidebar_configuration(available_course_data: Dict) -> Optional[Dict]:
         """Handle sidebar configuration and return selected course data."""
         with st.sidebar:
@@ -239,16 +275,16 @@ class UIComponents:
                             st.caption(f"Grade: **{grade}** | Credits: {credits}")
 
                         
-                        # Show semester GPA if available
-                        semester_gpa = sem.get('sem_gpa')
-                        if semester_gpa is not None:
+                        # Calculate and show semester GPA for all semesters
+                        semester_gpa = UIComponents._calculate_semester_gpa(courses)
+                        if semester_gpa is not None and semester_gpa > 0:
                             st.info(f"📊 Semester GPA: **{semester_gpa:.2f}**")
                     else:
                         st.write("No courses found for this semester.")
         
         with col_sem2:
-            st.subheader("Database Expansion Opportunity")
             if unidentified_courses:
+                st.subheader("Database Expansion Opportunity")
                 UIComponents.display_unidentified_courses_info(unidentified_courses)
     
     @staticmethod
@@ -362,8 +398,29 @@ class UIComponents:
             courses_by_semester[semester].append(course)
         
         with st.expander("🔍 New Courses - Require Classification", expanded=True):
-            # Sort semesters chronologically (basic sorting)
-            sorted_semesters = sorted(courses_by_semester.keys())
+            # Sort semesters chronologically (proper sorting by year and semester type)
+            def sort_semester_key(semester_name):
+                """Create a sort key for chronological semester ordering."""
+                semester_lower = semester_name.lower()
+                
+                # Extract year
+                import re
+                year_match = re.search(r'(\d{4})', semester_name)
+                year = int(year_match.group(1)) if year_match else 9999
+                
+                # Determine semester order within year
+                if 'first' in semester_lower:
+                    semester_order = 1
+                elif 'second' in semester_lower:
+                    semester_order = 2
+                elif 'summer' in semester_lower:
+                    semester_order = 3
+                else:
+                    semester_order = 4  # Unknown semesters go last
+                
+                return (year, semester_order)
+            
+            sorted_semesters = sorted(courses_by_semester.keys(), key=sort_semester_key)
             
             for semester in sorted_semesters:
                 courses = courses_by_semester[semester]
@@ -376,7 +433,6 @@ class UIComponents:
                 # Show semester summary
                 total_credits = sum(course.get('credits', 0) for course in courses)
                 st.caption(f"*{len(courses)} courses, total {total_credits} credits*")
-                st.write("")  # Add spacing between semesters
             
             st.info("💡 These courses are not yet in our classification system and would benefit from being added for more accurate analysis.")
 

@@ -18,11 +18,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize session state first (before any session state access)
-session_manager = SessionManager()
-session_manager.initialize_session_state()
+# Initialize session state FIRST
+SessionManager.initialize_session_state()
 
-# Custom CSS for multipage navigation and admin panel
+# Custom CSS for styling
 st.markdown("""
 <style>
 /* Style specifically for multipage navigation only */
@@ -83,37 +82,37 @@ div[data-testid="stSidebarNav"] ul li a {
 
 def render_admin_dashboard():
     """Render the admin dashboard after login"""
+
     # Sidebar navigation
     with st.sidebar:
         st.header("📋 Admin Navigation")
-        
-        # Navigation menu (removed Dashboard option)
+
         page = st.radio(
             "Select Page",
             ["📤 Upload Data", "📂 Manage Curriculums"],
             key="admin_nav",
-            index=1  # Default to Manage Curriculums (index 1)
+            index=1
         )
-        
+
         st.markdown("---")
-        st.info(f"👤 Logged in as: **admin**")
-        
+        st.info("👤 Logged in as: **admin**")
+
         if st.button("🚪 Logout", use_container_width=True, type="secondary"):
-            st.session_state.admin_logged_in = False
-            st.session_state.show_change_password = False
-            st.session_state.came_from_admin = True  # Set flag for Home page
+            SessionManager.logout_admin()
             st.switch_page("Home.py")
-    
-    # Route to appropriate page based on selection
+
+    # Route to appropriate page
     if page == "📤 Upload Data":
         from components.admin_upload import render_upload_page
         render_upload_page()
+
     elif page == "📂 Manage Curriculums":
         from components.admin_manage import render_manage_page
         render_manage_page()
 
-# Main logic
+
 if not st.session_state.admin_logged_in:
     render_login_page()
+    st.stop()   # important: prevent admin code from running
 else:
     render_admin_dashboard()

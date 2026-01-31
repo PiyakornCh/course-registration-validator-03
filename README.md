@@ -15,7 +15,7 @@ This Streamlit-based application analyzes transcript PDFs, validates course prer
 
 ### 🎓 Curriculum Management
 - **Auto-Selection**: Automatically selects correct curriculum based on student ID
-  - Student ID 65XXXXXXXX+ → B-IE-2565 curriculum
+  - Student ID 65XXXXXXXX → B-IE-2565 curriculum
   - Student ID 60-64XXXXXXXX → B-IE-2560 curriculum
   - Student ID 59XXXXXXXX or lower → B-IE-2560 curriculum
 - **Manual Override**: Option to manually select curriculum

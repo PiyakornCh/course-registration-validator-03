@@ -10,6 +10,16 @@ class ComprehensiveReportGenerator:
     def __init__(self):
         self.course_categories = None
         self.template = None
+        self.category_display_names = {
+            'wellness_PE': 'Wellness PE',
+            'wellness': 'Wellness',
+            'entrepreneurship': 'Entrepreneurship',
+            'language_communication_thai': 'Thai Language & Communication',
+            'language_communication_english': 'English Language & Communication',
+            'thai_citizen_global': 'Thai Citizen & Global',
+            'technical_electives': 'Technical Electives',
+            'free_electives': 'Free Electives'
+        }
     
     def _calculate_gpa(self, analysis: Dict, semesters: List[Dict] = None) -> float:
         """Calculate GPA from all completed courses (same method as flow chart)."""
@@ -129,6 +139,21 @@ class ComprehensiveReportGenerator:
             'completed': ie_core_completed,
             'required': ie_core_required
         }
+        
+        # Check internship status (01206399)
+        internship_completed = False
+        for semester in semesters:
+            for course in semester.get("courses", []):
+                code = course.get("code", "")
+                grade = course.get("grade", "")
+                # Check if internship course is completed with passing grade
+                if code == "01206399" and grade in ["A", "B+", "B", "C+", "C", "D+", "D", "P"]:
+                    internship_completed = True
+                    break
+            if internship_completed:
+                break
+        
+        analysis['internship_completed'] = internship_completed
 
         # Generate report sections
         html_content = self._generate_html_structure()
@@ -537,7 +562,8 @@ class ComprehensiveReportGenerator:
             
             status_class = "status-good" if progress_percent >= 100 else "status-warning" if progress_percent >= 50 else "status-critical"
             
-            category_name = category.replace('_', ' ').title()
+            # Use display name mapping or fallback to formatted name
+            category_name = self.category_display_names.get(category, category.replace('_', ' ').title())
             
             elective_html += f"""
             <div class="course-item">
@@ -612,6 +638,20 @@ class ComprehensiveReportGenerator:
         
         overall_progress = (total_completed_capped / total_required) * 100 if total_required > 0 else 0
         
+        # Check internship status (01206399)
+        internship_completed = analysis.get('internship_completed', False)
+        internship_status_text = "Completed" if internship_completed else "Not Completed"
+        
+        # Determine graduation status message
+        if overall_progress >= 80 and internship_completed:
+            graduation_status = "You are on track for graduation!"
+        elif overall_progress >= 50 and not internship_completed:
+            graduation_status = "Good progress toward graduation requirements. Complete internship to be eligible for graduation."
+        elif overall_progress >= 50 and internship_completed:
+            graduation_status = "Good progress toward graduation requirements."
+        else:
+            graduation_status = "Focus needed on completing remaining requirements."
+        
         return f"""
         <div class="section">
             <div class="section-header">🎓 Graduation Requirements</div>
@@ -627,11 +667,12 @@ class ComprehensiveReportGenerator:
                     </div>
                 </div>
                 
-                <div class="alert alert-info">
-                    <strong>Graduation Status:</strong> 
-                    {"You are on track for graduation!" if overall_progress >= 80 else 
-                     "Good progress toward graduation requirements." if overall_progress >= 50 else
-                     "Focus needed on completing remaining requirements."}
+                <div class="alert alert-info" style="border-left: 4px solid #2196f3; padding: 15px; margin: 15px 0;">
+                    <strong>Graduation Status:</strong> {graduation_status}
+                </div>
+                
+                <div class="alert alert-info" style="border-left: 4px solid #2196f3; padding: 15px; margin: 15px 0;">
+                    <strong>Internship Status:</strong> {internship_status_text}
                 </div>
             </div>
         </div>
@@ -645,7 +686,7 @@ class ComprehensiveReportGenerator:
         for category, data in analysis['elective_analysis'].items():
             if data['completed'] < data['required']:
                 remaining = data['required'] - data['completed']
-                category_name = category.replace('_', ' ').title()
+                category_name = self.category_display_names.get(category, category.replace('_', ' ').title())
                 missing_requirements.append({
                     'category': category_name,
                     'credits_needed': remaining

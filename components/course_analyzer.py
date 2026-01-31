@@ -246,22 +246,6 @@ class CourseAnalyzer:
             st.error(f"Error calculating credit summary: {e}")
             return {}
     
-    def _get_technical_elective_prefixes(self):
-        """
-        Get configurable technical elective prefixes.
-        Loads from configuration file with fallback to defaults.
-        """
-        try:
-            config_file = Path(__file__).parent.parent / "course_data" / "technical_elective_config.json"
-            if config_file.exists():
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                    return config.get("technical_elective_prefixes", ["01206"])
-        except Exception as e:
-            print(f"Warning: Could not load technical elective config: {e}")
-        
-        # Fallback to default prefixes
-        return ["01206"]
     def analyze_and_display_courses(self, semesters: List[Dict], template=None):
         """Analyze courses and display results."""
         session_manager = SessionManager()
@@ -279,148 +263,19 @@ class CourseAnalyzer:
         credit_summary = self.calculate_credit_summary(semesters)
         UIComponents.display_credit_summary(credit_summary)
     
-    def get_course_statistics(self) -> Dict:
-        """Get statistics about course categories."""
-        if self.course_categories is None:
-            self.course_categories = self.load_course_categories()
-        
-        stats = {
-            'ie_core': len(self.course_categories["ie_core"]),
-            'technical_electives': len(self.course_categories["technical_electives"]),
-            'gen_ed': {
-                category: len(courses) for category, courses in self.course_categories["gen_ed"].items()
-            },
-            'total': len(self.course_categories["all_courses"])
-        }
-        
-        return stats
-    
-    def get_courses_by_category(self, category: str, subcategory: str = None) -> Dict:
-        """Get courses by category and subcategory."""
-        if self.course_categories is None:
-            self.course_categories = self.load_course_categories()
-        
-        if category == "gen_ed" and subcategory:
-            return self.course_categories["gen_ed"].get(subcategory, {})
-        else:
-            return self.course_categories.get(category, {})
-    
-    def is_course_technical_elective(self, course_code: str) -> bool:
-        """Check if a course is a technical elective."""
-        if self.course_categories is None:
-            self.course_categories = self.load_course_categories()
-        
-        return course_code.upper() in self.course_categories["technical_electives"]
-    
-    def get_course_info(self, course_code: str) -> Optional[Dict]:
-        """Get detailed information about a course."""
-        if self.course_categories is None:
-            self.course_categories = self.load_course_categories()
-        
-        return self.course_categories["all_courses"].get(course_code.upper())
-
-
-class CourseClassificationHelper:
-    """Helper class for course classification tasks."""
-    
-    @staticmethod
-    def extract_credit_value(credits_str: str) -> int:
-        """Extract numeric credit value from credit string like '3(3-0-6)'."""
+    def _get_technical_elective_prefixes(self):
+        """
+        Get configurable technical elective prefixes.
+        Loads from configuration file with fallback to defaults.
+        """
         try:
-            if isinstance(credits_str, int):
-                return credits_str
-            elif isinstance(credits_str, str):
-                if "(" in credits_str:
-                    return int(credits_str.split("(")[0])
-                else:
-                    return int(credits_str) if credits_str.isdigit() else 0
-            else:
-                return 0
-        except (ValueError, AttributeError):
-            return 0
-    
-    @staticmethod
-    def is_passing_grade(grade: str) -> bool:
-        """Check if a grade is a passing grade."""
-        return grade in ["A", "B+", "B", "C+", "C", "D+", "D", "P"]
-    
-    @staticmethod
-    def get_grade_points(grade: str) -> float:
-        """Get grade points for GPA calculation."""
-        grade_points = {
-            "A": 4.0,
-            "B+": 3.5,
-            "B": 3.0,
-            "C+": 2.5,
-            "C": 2.0,
-            "D+": 1.5,
-            "D": 1.0,
-            "F": 0.0
-        }
-        return grade_points.get(grade, 0.0)
-    
-    @staticmethod
-    def categorize_by_department(course_code: str) -> str:
-        """Categorize course by department code."""
-        if not course_code:
-            return "Unknown"
+            config_file = Path(__file__).parent.parent / "course_data" / "technical_elective_config.json"
+            if config_file.exists():
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    return config.get("technical_elective_prefixes", ["01206"])
+        except Exception as e:
+            print(f"Warning: Could not load technical elective config: {e}")
         
-        dept_code = course_code[:5] if len(course_code) >= 5 else course_code
-        
-        dept_mapping = {
-            "01206": "Industrial Engineering",
-            "01204": "Computer Science", 
-            "01205": "Electrical Engineering",
-            "01208": "Mechanical Engineering",
-            "01213": "Materials Engineering",
-            "01417": "Mathematics",
-            "01420": "Physics",
-            "01403": "Chemistry",
-            "01361": "Thai Language",
-            "01355": "English Language",
-            "01175": "Physical Education",
-            "01999": "General Education",
-            "01418": "Information Technology"
-        }
-        
-        return dept_mapping.get(dept_code, f"Department {dept_code}")
-
-
-class CourseValidationHelper:
-    """Helper class for course validation related tasks."""
-    
-    @staticmethod
-    def check_prerequisite_satisfaction(course_code: str, passed_courses: List[str], 
-                                      course_analyzer: CourseAnalyzer) -> Tuple[bool, str]:
-        """Check if prerequisites are satisfied for a course."""
-        course_info = course_analyzer.get_course_info(course_code)
-        
-        if not course_info:
-            return True, "Course not found in database"
-        
-        prerequisites = course_info.get("prerequisites", [])
-        if not prerequisites:
-            return True, "No prerequisites required"
-        
-        missing_prerequisites = []
-        for prereq in prerequisites:
-            if prereq not in passed_courses:
-                missing_prerequisites.append(prereq)
-        
-        if missing_prerequisites:
-            return False, f"Missing prerequisites: {', '.join(missing_prerequisites)}"
-        
-        return True, "All prerequisites satisfied"
-    
-    @staticmethod
-    def validate_credit_load(semester_credits: int, semester_type: str) -> Tuple[bool, str]:
-        """Validate credit load for a semester."""
-        if semester_type.lower() == "summer":
-            max_credits = 9
-        else:
-            max_credits = 22
-        
-        if semester_credits > max_credits:
-            return False, f"Exceeds maximum {max_credits} credits for {semester_type} semester"
-        
-        return True, f"Credit load valid: {semester_credits} credits"
+        # Fallback to default prefixes
+        return ["01206"]

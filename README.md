@@ -1,246 +1,190 @@
-# KU IE Course Planner Helper
+# KU IE Course Validator & Academic Planner
 
-Comprehensive Streamlit web app for Industrial Engineering students at Kasetsart University to plan, track, and validate their academic progress.
+A comprehensive web application for Industrial Engineering students at Kasetsart University to validate course prerequisites, track academic progress, and plan their curriculum path to graduation.
 
-## Features
+## 🎯 Overview
 
-### 📋 Current Features
-- **PDF Transcript Upload** - Extract and analyze existing course data
-- **Auto-Curriculum Selection** - Automatically selects curriculum based on student ID
-- **Course Validation** - Automatic prerequisite checking
-- **Interactive Flow Chart** - Visual curriculum progression
-- **Credit Analysis** - Track progress by course categories
-- **Smart Excel Reports** - Detailed academic analysis
-- **Admin Panel** - Comprehensive curriculum data management system
+This Streamlit-based application analyzes transcript PDFs, validates course prerequisites, tracks graduation progress, and generates interactive curriculum visualizations to help IE students plan their academic journey.
 
-### 🚀 Planned Features
-- **Course Recommendation Engine** - Suggest optimal course sequences
-- **Semester Planning** - Interactive course selection for upcoming terms
-- **Graduation Timeline** - Project completion dates and requirements
-- **GPA Forecasting** - Predict academic outcomes
-- **Schedule Optimization** - Avoid time conflicts and balance workload
+## ✨ Key Features
 
-## Quick Start
+### 📄 PDF Transcript Processing
+- **Automatic Extraction**: Upload official transcript PDF for instant data extraction
+- **Smart Parsing**: Advanced pattern matching handles various transcript formats
+- **Student Info Detection**: Automatically extracts student ID, name, and admission details
+
+### 🎓 Curriculum Management
+- **Auto-Selection**: Automatically selects correct curriculum based on student ID
+  - Student ID 65XXXXXXXX+ → B-IE-2565 curriculum
+  - Student ID 60-64XXXXXXXX → B-IE-2560 curriculum
+  - Student ID 59XXXXXXXX or lower → B-IE-2560 curriculum
+- **Manual Override**: Option to manually select curriculum
+- **Multi-Curriculum Support**: Supports multiple curriculum versions simultaneously
+
+### ✅ Course Validation
+- **Prerequisite Checking**: Validates prerequisites were completed before enrollment
+- **Corequisite Validation**: Ensures corequisites are taken in same semester
+- **Credit Limit Validation**: Checks semester credit loads (22 credits regular, 9 summer)
+- **Propagation Analysis**: Identifies cascading effects of invalid registrations
+
+### 📊 Progress Tracking
+- **Category Analysis**: Tracks credits by course category
+  - IE Core courses
+  - Technical Electives
+  - General Education (Wellness, Language, Entrepreneurship, etc.)
+  - Free Electives
+- **Completion Metrics**: Visual progress bars showing completion percentage
+- **GPA Calculation**: Automatic GPA calculation from completed courses
+- **Deviation Detection**: Identifies courses taken outside standard timeline
+
+### 🗺️ Interactive Flow Chart
+- **Visual Curriculum Map**: Interactive HTML flow chart by year and semester
+- **Prerequisite Lines**: Visual connections showing course dependencies
+- **Hover Details**: Detailed course information on hover
+- **Downloadable**: Export as standalone HTML file
+
+### 📋 Comprehensive Reports
+- **Academic Progress Report**: Detailed HTML report with
+  - Executive summary with key metrics
+  - Progress timeline by semester
+  - Course completion analysis by category
+  - Validation issues and recommendations
+  - Graduation requirements status
+  - Next semester planning suggestions
+- **Validation Report**: Text-based prerequisite validation details
+- **Raw Data Export**: JSON export of all extracted and validated data
+
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Run the application
 streamlit run Home.py
 ```
 
-## Usage
+### Requirements
+- Python 3.8+
+- Streamlit >= 1.28.0
+- PyPDF2 >= 3.0.0
+- openpyxl >= 3.1.0
+- pandas >= 2.0.0
+
+## 📖 Usage Guide
 
 ### For Students
-1. Upload PDF transcript in sidebar
-2. Curriculum is automatically selected based on your student ID
-3. View validation results and progress analysis
-4. Download interactive reports and flow charts
+
+1. **Upload Transcript**
+   - Click "Browse files" in sidebar
+   - Select official transcript PDF
+   - Wait for automatic processing
+
+2. **Review Results**
+   - Check validation results for prerequisite violations
+   - Review credit progress by category
+   - Examine interactive flow chart
+
+3. **Download Reports**
+   - 📋 Comprehensive Report: Detailed academic analysis
+   - 🗂️ Flow Chart (HTML): Interactive curriculum visualization
+   - 📄 Validation Report: Text-based prerequisite validation
+   - 💾 Raw Data (JSON): Complete extracted data
 
 ### For Administrators
-1. Navigate to **Admin Home** from the multipage menu
-2. Login with credentials (default: username `admin`, password `admin`)
-3. Use the admin panel to manage curriculum data
 
-## Admin Panel
+1. **Access Admin Panel**
+   - Navigate to "Admin Home" from sidebar
 
-The admin panel provides a comprehensive curriculum data management system with the following features:
+2. **Upload New Curriculum Data**
+   - Download format template (format.csv)
+   - Prepare curriculum data
+   - Upload CSV file and specify curriculum year
+   - System automatically converts to JSON format
 
-### 🏠 Admin Dashboard
-- **Statistics Overview** - Total curriculums, current user status
-- **Recent Curriculums** - Quick access to latest curriculum data
-- **Quick Navigation** - Direct links to main features
+3. **Manage Existing Curriculums**
+   - View all available curriculums
+   - Inspect course lists and requirements
+   - View raw JSON data
+   - Delete outdated curriculums
 
-### Upload Data
-**Features:**
-- CSV file upload and validation
-- Automatic conversion to JSON format
-- Data integrity checking
-- Curriculum data storage
-
-**Usage:**
-1. Download the format template (format.csv)
-2. Prepare your data according to the template
-3. Upload the CSV file
-4. Specify curriculum year (e.g., 2565)
-5. Click **"💾 Save Data"**
-
-### Manage Curriculums
-**Features:**
-- View all existing curriculums
-- Inspect curriculum details and course lists
-- View raw JSON files
-- Delete unwanted curriculums
-
-**Usage:**
-1. Select curriculum to view
-2. Expand to see detailed information
-3. Use action buttons to view data or delete
-
-### 🔐 Security Features
-- **Authentication System** - Secure login required for all admin functions
-- **Session Management** - Automatic logout on navigation away from admin pages
-- **Password Management** - Change password functionality with strength requirements
-- **Secure Storage** - Passwords stored in `.streamlit/secrets.toml` (excluded from version control)
-
-#### Password Requirements
-- At least 8 characters
-- Contains digits (0-9)
-- Contains lowercase letters (a-z)
-- Contains uppercase letters (A-Z)
-- Contains special characters (!@#$%^&* etc.)
-
-### Admin Panel Access
-1. **Start Application**: Run `streamlit run Home.py`
-2. **Navigate to Admin**: Click "Admin Home" in the multipage menu
-3. **Login**: Use credentials (default: username `admin`, password `admin`)
-4. **Navigate**: Use sidebar menu to switch between features
-
-## Course Data Structure
-
-The course data has been redesigned for easier maintenance and automatic curriculum selection based on student IDs.
-
-### Directory Structure
-```
-course_data/
-├── B-IE-2560/
-│   ├── courses.json      # Course definitions for 2560 curriculum
-│   └── template.json     # Mandatory course structure for 2560
-├── B-IE-2565/
-│   ├── courses.json      # Course definitions for 2565 curriculum  
-│   └── template.json     # Mandatory course structure for 2565
-├── gen_ed_courses.json   # Shared general education courses
-└── format.csv           # CSV template for data upload
-```
-
-### Auto-Selection Logic
-
-The system automatically selects the appropriate curriculum based on student ID:
-
-- **Student ID 65XXXXXXXX or higher** → B-IE-2565 (newest)
-- **Student ID 60-64XXXXXXXX** → B-IE-2560  
-- **Student ID 59XXXXXXXX or lower** → B-IE-2560 (oldest available)
-- **Default (no student ID)** → B-IE-2565 (newest)
-
-### Streamlit Interface Features
-
-#### Auto-Selection
-- ✅ **Checkbox**: "Auto-select curriculum based on Student ID" (enabled by default)
-- ✅ **Smart Detection**: Automatically selects curriculum after PDF upload
-- ✅ **Manual Override**: Can disable auto-selection and choose manually
-- ✅ **Visual Feedback**: Shows which curriculum was auto-selected and why
-
-#### User Experience
-1. **Before PDF Upload**: Shows newest curriculum (B-IE-2565) by default
-2. **After PDF Upload**: Automatically switches to appropriate curriculum based on student ID
-3. **Manual Control**: User can uncheck auto-selection to choose manually
-4. **Smart Re-validation**: Automatically re-validates courses when curriculum changes
-5. **Manual Re-validation**: "🔄 Re-validate with this curriculum" button for manual refresh
-
-## For Developers
-
-### Adding a New Curriculum (e.g., B-IE-2570)
-
-1. Create new folder: `course_data/B-IE-2570/`
-2. Add two files:
-   - `courses.json` (copy from existing and modify)
-   - `template.json` (copy from existing and modify)
-3. Update the logic in `utils/curriculum_selector.py` if needed
-
-### Admin Panel Architecture
-
-The admin panel uses Streamlit's multipage architecture with the following structure:
+## 📁 Project Structure
 
 ```
-pages/
-└── Admin_Home.py          # Main admin interface with sidebar navigation
-```
-
-**Key Components:**
-- **Single Page Design** - All admin functions in one page with sidebar navigation
-- **Session Management** - Secure authentication and session handling
-- **Component Integration** - Reuses existing `components/admin_*` modules
-- **Responsive UI** - Clean interface with gradient styling and intuitive navigation
-
-### Usage Examples
-
-```python
-from utils.curriculum_selector import get_curriculum_for_student_id
-from utils.course_data_loader import load_curriculum_data
-
-# Auto-select curriculum for a student
-curriculum = get_curriculum_for_student_id("6512345678")  # Returns "B-IE-2565"
-
-# Load complete curriculum data
-data = load_curriculum_data(student_id="6512345678")
-courses = data['courses']
-template = data['template']
-
-# Load specific curriculum
-data = load_curriculum_data("B-IE-2560")
-```
-
-### Benefits of Current Structure
-
-- ✅ **Simple**: Only 2 levels deep, clear naming
-- ✅ **Automatic**: Student ID-based curriculum selection
-- ✅ **Concurrent**: Multiple curricula can be active simultaneously
-- ✅ **Easy Updates**: Just replace files in the relevant folder
-- ✅ **No Config**: No configuration files to maintain
-- ✅ **Backward Compatible**: Existing functionality preserved
-- ✅ **Admin Friendly**: Easy-to-use web interface for data management
-
-## Troubleshooting
-
-### Common Issues
-
-**1. Cannot Login to Admin Panel**
-- Check username and password (default: admin/admin)
-- Try refreshing the web page
-- Check if `.streamlit/secrets.toml` file exists with admin credentials
-- If migrating from old version, the system will automatically detect legacy `admin_password.txt`
-
-**2. CSV Upload Fails**
-- Verify file format matches format.csv template
-- Check file encoding (should be UTF-8)
-- Ensure all required columns are present
-
-**3. Curriculums Not Displaying**
-- Check `course_data` folder structure
-- Verify `courses.json` and `template.json` files exist
-- Refresh the web page
-
-**4. Auto-Selection Not Working**
-- Ensure PDF contains readable student ID
-- Check if student ID follows expected format
-- Try manual curriculum selection as fallback
-
-## File Structure
-
-```
-├── Home.py                # Main application
+├── Home.py                          # Main application entry point
 ├── pages/
-│   └── Admin_Home.py     # Admin panel interface
-├── validator.py          # Course validation logic
-├── components/           # Reusable components
-│   ├── admin_auth.py    # Authentication system
-│   ├── admin_upload.py  # File upload handling
-│   ├── admin_manage.py  # Curriculum management
-│   └── ...
-├── course_data/         # Course catalogs (JSON)
-│   ├── B-IE-2560/      # 2560 curriculum data
-│   ├── B-IE-2565/      # 2565 curriculum data
-│   └── format.csv      # Upload template
-└── utils/              # PDF processing & utilities
-    ├── curriculum_selector.py
-    └── course_data_loader.py
+│   └── Admin_Home.py               # Admin panel interface
+├── components/                      # Modular components
+│   ├── admin_auth.py               # Authentication system
+│   ├── admin_upload.py             # File upload handling
+│   ├── admin_manage.py             # Curriculum management
+│   ├── admin_panel.py              # Admin panel UI
+│   ├── course_analyzer.py          # Course classification & analysis
+│   ├── flow_chart_generator.py     # Flow chart generation
+│   ├── flow_chart_data_analyzer.py # Flow chart data processing
+│   ├── flow_chart_html_generator.py # Flow chart HTML rendering
+│   ├── report_generator.py         # Report generation
+│   ├── comprehensive_report_generator.py # Detailed academic reports
+│   ├── session_manager.py          # Session state management
+│   └── ui_components.py            # Reusable UI components
+├── utils/                          # Utility modules
+│   ├── pdf_processor.py            # PDF text extraction
+│   ├── pdf_extractor.py            # Transcript data parsing
+│   ├── course_data_loader.py       # Course data loading
+│   ├── curriculum_selector.py      # Auto curriculum selection
+│   └── excel_generator.py          # Excel report generation
+├── course_data/                    # Course catalogs
+│   ├── B-IE-2560/                  # 2560 curriculum
+│   │   ├── courses.json            # Course definitions
+│   │   └── template.json           # Curriculum structure
+│   ├── B-IE-2565/                  # 2565 curriculum
+│   │   ├── courses.json
+│   │   └── template.json
+│   ├── gen_ed_courses.json         # General education courses
+│   ├── technical_elective_config.json # Technical elective configuration
+│   └── format.csv                  # CSV upload template
+├── validator.py                    # Core validation logic
+├── requirements.txt                # Python dependencies
+└── README.md                       # This file
 ```
 
-## Requirements
+## 🎨 Features in Detail
 
-- Python 3.8+
-- Streamlit
-- PyPDF2
-- Pandas
-- OpenPyXL
+### Course Classification System
 
----
-*Comprehensive academic planning tool for KU Industrial Engineering students with administrative data management capabilities*
+Priority-based classification:
+
+1. **General Education** (Highest Priority)
+   - Wellness & PE
+   - Entrepreneurship
+   - Thai Language & Communication
+   - English Language & Communication
+   - Thai Citizen & Global Awareness
+   - Aesthetics
+
+2. **Technical Electives**
+   - Courses marked as technical electives in database
+   - Courses with configurable prefixes (default: 01206)
+
+3. **IE Core**
+   - Required Industrial Engineering courses
+   - Related courses from other departments
+
+4. **Free Electives** (Lowest Priority)
+   - Any course not classified above
+
+### Validation Logic
+
+The validator checks:
+- **Prerequisites**: All required courses completed before enrollment
+- **Corequisites**: Required courses taken in same semester
+- **Credit Limits**: 
+  - Regular semester: 22 credits maximum
+  - Summer session: 9 credits maximum
+- **Grade Requirements**: Minimum passing grades for prerequisites
+- **Propagation**: Cascading effects of invalid registrations
+
+**Note**: This application is designed specifically for Kasetsart University Industrial Engineering students. Curriculum data and validation rules are based on official university requirements but should be verified with academic advisors for official guidance.

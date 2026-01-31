@@ -89,7 +89,7 @@ def render_admin_dashboard():
 
         page = st.radio(
             "Select Page",
-            ["📤 Upload Data", "📂 Manage Curriculums"],
+            ["Upload Data", "Manage Curriculums"],
             key="admin_nav",
             index=1
         )
@@ -102,11 +102,11 @@ def render_admin_dashboard():
             st.switch_page("Home.py")
 
     # Route to appropriate page
-    if page == "📤 Upload Data":
+    if page == "Upload Data":
         from components.admin_upload import render_upload_page
         render_upload_page()
 
-    elif page == "📂 Manage Curriculums":
+    elif page == "Manage Curriculums":
         from components.admin_manage import render_manage_page
         render_manage_page()
 

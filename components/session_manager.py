@@ -18,7 +18,7 @@ class SessionManager:
         st.session_state.setdefault("last_pdf_name", None)
         st.session_state.setdefault("admin_logged_in", False)
         st.session_state.setdefault("admin_mode", False)
-        st.session_state.setdefault("admin_nav", "📂 Manage Curriculums")
+        st.session_state.setdefault("admin_nav", "Manage Curriculums")
         st.session_state.setdefault("came_from_admin", False)
 
 
@@ -88,7 +88,7 @@ class SessionManager:
     def logout_admin():
         """Clean logout for admin."""
         st.session_state.admin_logged_in = False
-        st.session_state.admin_nav = "📂 Manage Curriculums"
+        st.session_state.admin_nav = "Manage Curriculums"
         st.session_state.came_from_admin = True
 
     @staticmethod

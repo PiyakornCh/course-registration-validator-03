@@ -49,7 +49,7 @@ The admin panel provides a comprehensive curriculum data management system with 
 - **Recent Curriculums** - Quick access to latest curriculum data
 - **Quick Navigation** - Direct links to main features
 
-### 📤 Upload Data
+### Upload Data
 **Features:**
 - CSV file upload and validation
 - Automatic conversion to JSON format
@@ -63,7 +63,7 @@ The admin panel provides a comprehensive curriculum data management system with 
 4. Specify curriculum year (e.g., 2565)
 5. Click **"💾 Save Data"**
 
-### 📂 Manage Curriculums
+### Manage Curriculums
 **Features:**
 - View all existing curriculums
 - Inspect curriculum details and course lists

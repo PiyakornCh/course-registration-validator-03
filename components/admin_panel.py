@@ -50,7 +50,7 @@ def display_admin_panel():
             st.header("📋 Menu")
             menu = st.radio(
                 "Select Page",
-                ["📤 Upload Data", "📂 Manage Curriculums"],
+                ["Upload Data", "Manage Curriculums"],
                 key="admin_menu"
             )
             
@@ -67,7 +67,7 @@ def display_admin_panel():
                 st.rerun()
         
         # Route to appropriate page
-        if menu == "📤 Upload Data":
+        if menu == "Upload Data":
             render_upload_page()
-        elif menu == "📂 Manage Curriculums":
+        elif menu == "Manage Curriculums":
             render_manage_page()

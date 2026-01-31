@@ -284,7 +284,7 @@ class UIComponents:
         
         with col_sem2:
             if unidentified_courses:
-                st.subheader("Database Expansion Opportunity")
+                st.subheader("🔍 Database Expansion Opportunity")
                 UIComponents.display_unidentified_courses_info(unidentified_courses)
     
     @staticmethod

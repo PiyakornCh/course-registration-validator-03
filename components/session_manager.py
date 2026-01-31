@@ -29,6 +29,8 @@ class SessionManager:
             st.session_state.admin_logged_in = False
         if 'show_change_password' not in st.session_state:
             st.session_state.show_change_password = False
+        if 'admin_nav' not in st.session_state:
+            st.session_state.admin_nav = "📂 Manage Curriculums"
     
     @staticmethod
     def is_processing_complete() -> bool:

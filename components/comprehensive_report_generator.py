@@ -61,12 +61,81 @@ class ComprehensiveReportGenerator:
         # Analyze student progress
         analysis = flow_generator.analyze_student_progress_enhanced(semesters, self.template, self.course_categories)
         
+        def parse_credits(raw, default=3):
+            if isinstance(raw, int):
+                return raw
+            if not raw:
+                return default
+
+            s = str(raw).strip()
+            # "3(3-0-6)" -> "3"
+            if "(" in s:
+                s = s.split("(")[0]
+            # "1-3" -> "1"
+            if "-" in s:
+                s = s.split("-")[0]
+            if s.isdigit():
+                return int(s)
+            return default
+
+        # Calculate IE Core credits (excluding 01206399)
+        ie_core_completed = 0
+        ie_core_required = 0
+
+        # Load industrial_engineering_courses data
+        curriculum_name = selected_course_data.get('curriculum_folder', 'B-IE-2565')
+        ie_courses_data = {}
+
+        # Build lookup from industrial_engineering_courses
+        if 'data' in selected_course_data and 'industrial_engineering_courses' in selected_course_data['data']:
+            for course in selected_course_data['data']['industrial_engineering_courses']:
+                code = course.get('code', '')
+                credits = parse_credits(course.get('credits'), default=3)
+                ie_courses_data[code] = credits
+
+        # Calculate required IE Core credits from template
+        for year_data in self.template.get("core_curriculum", {}).values():
+            for course_codes in year_data.values():
+                for course_code in course_codes:
+                    if course_code != "01206399":  # Exclude this course
+                        course_credits = ie_courses_data.get(course_code, 3)
+                        ie_core_required += course_credits
+
+        # Count completed IE Core credits
+        for semester in semesters:
+            for course in semester.get("courses", []):
+                code = course.get("code", "")
+                grade = course.get("grade", "")
+                credits = parse_credits(course.get("credits"), default=0)
+
+                # Only count passed courses and exclude 01206399
+                if grade in ["A", "B+", "B", "C+", "C", "D+", "D"] and code != "01206399":
+
+                    # Check if course is in core_curriculum
+                    is_core_curriculum = False
+                    for year_data in self.template.get("core_curriculum", {}).values():
+                        for course_codes in year_data.values():
+                            if code in course_codes:
+                                is_core_curriculum = True
+                                break
+                        if is_core_curriculum:
+                            break
+
+                    if is_core_curriculum:
+                        ie_core_completed += credits
+
+        # Add IE Core to analysis
+        analysis['ie_core'] = {
+            'completed': ie_core_completed,
+            'required': ie_core_required
+        }
+
         # Generate report sections
         html_content = self._generate_html_structure()
         html_content += self._generate_header_section(student_info, curriculum_name, semesters, analysis)
         html_content += self._generate_executive_summary(student_info, semesters, analysis)
         html_content += self._generate_academic_progress_section(analysis, semesters)
-        html_content += self._generate_course_completion_analysis(analysis, semesters)
+        html_content += self._generate_course_completion_analysis(analysis, semesters, selected_course_data)
         html_content += self._generate_validation_issues_section(validation_results)
         html_content += self._generate_graduation_requirements_section(analysis)
         html_content += self._generate_semester_planning_section(analysis, semesters)
@@ -430,8 +499,13 @@ class ComprehensiveReportGenerator:
         
         return progress_html
     
-    def _generate_course_completion_analysis(self, analysis: Dict, semesters: List[Dict]) -> str:
+    def _generate_course_completion_analysis(self, analysis: Dict, semesters: List[Dict], selected_course_data: Dict) -> str:
         """Generate course completion analysis by category."""
+        
+        # Get IE Core data from analysis
+        ie_core_data = analysis.get('ie_core', {'completed': 0, 'required': 110})
+        ie_core_completed = ie_core_data['completed']
+        ie_core_required = ie_core_data['required']
         
         # Analyze elective progress
         elective_html = """
@@ -440,6 +514,22 @@ class ComprehensiveReportGenerator:
             <div class="section-content">
         """
         
+        # Add IE Core section first
+        ie_progress_percent = min((ie_core_completed / ie_core_required) * 100, 100) if ie_core_required > 0 else 0
+        ie_status_class = "status-good" if ie_progress_percent >= 100 else "status-warning" if ie_progress_percent >= 50 else "status-critical"
+        
+        elective_html += f"""
+            <div class="course-item">
+                <h4>IE Core</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill {ie_status_class}" style="width: {ie_progress_percent}%">
+                        {ie_core_completed}/{ie_core_required} credits ({ie_progress_percent:.0f}%)
+                    </div>
+                </div>
+            </div>
+            """
+        
+        # Add elective categories
         for category, data in analysis['elective_analysis'].items():
             required = data['required']
             completed = data['completed']
@@ -512,11 +602,15 @@ class ComprehensiveReportGenerator:
     def _generate_graduation_requirements_section(self, analysis: Dict) -> str:
         """Generate graduation requirements analysis."""
         
-        # Calculate overall progress toward graduation
-        total_required = sum(data['required'] for data in analysis['elective_analysis'].values())
-        total_completed = sum(data['completed'] for data in analysis['elective_analysis'].values())
+        # Get IE Core data from analysis
+        ie_core_data = analysis.get('ie_core', {'completed': 0, 'required': 110})
         
-        overall_progress = (total_completed / total_required) * 100 if total_required > 0 else 0
+        # Calculate overall progress toward graduation
+        total_required = sum(data['required'] for data in analysis['elective_analysis'].values()) + ie_core_data['required']
+        # Count only credits up to the required amount for each category
+        total_completed_capped = sum(min(data['completed'], data['required']) for data in analysis['elective_analysis'].values()) + min(ie_core_data['completed'], ie_core_data['required'])
+        
+        overall_progress = (total_completed_capped / total_required) * 100 if total_required > 0 else 0
         
         return f"""
         <div class="section">
@@ -529,7 +623,7 @@ class ComprehensiveReportGenerator:
                 
                 <div class="progress-bar">
                     <div class="progress-fill" style="width: {overall_progress}%">
-                        {total_completed}/{total_required} credits ({overall_progress:.0f}%)
+                        {total_completed_capped}/{total_required} credits ({overall_progress:.0f}%)
                     </div>
                 </div>
                 

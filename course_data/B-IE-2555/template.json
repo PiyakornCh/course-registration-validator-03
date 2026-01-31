@@ -1,0 +1,33 @@
+{
+  "curriculum_name": "B-IE-2555",
+  "core_curriculum": {
+    "year_1": {
+      "second_semester": ["01204111", "01403114", "01403117", "01417168", "01420112"],
+      "first_semester": ["01208111", "01417167", "01420111", "01420113", "01420114"]
+    },
+    "year_2": {
+      "first_semester": ["01206221", "01208221", "01208241", "01208281", "01213211", "01417267"],
+      "second_semester": ["01206223", "01206251", "01205201", "01208222", "01206222"]
+    },
+    "year_3": {
+      "first_semester": ["01206311", "01206321", "01206341", "01206381", "01205202", "01208381", "01208302"],
+      "second_semester": ["01206312", "01206322", "01206342", "01206343", "01206361", "01206362"]
+    },
+    "year_4": {
+      "first_semester": ["01206399", "01206452", "01206495", "01206471", "01206472"],
+      "second_semester": ["01206497", "01206499", "01206425", "01206431"]
+    }
+  },
+  "elective_requirements": {
+    "free_electives": 6,
+    "technical_electives": 9,
+    "wellness": 6,
+    "wellness_PE": 2,
+    "entrepreneurship": 3,
+    "thai_citizen_global": 3,
+    "language_communication_thai": 3,
+    "language_communication_foreigner": 9,
+    "language_communication_computer": 3,
+    "aesthetics": 3
+  }
+}

@@ -9,6 +9,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from components.admin_auth import render_login_page
+from components.session_manager import SessionManager
 
 # Page configuration
 st.set_page_config(
@@ -16,6 +17,10 @@ st.set_page_config(
     page_icon="🏠",
     layout="wide"
 )
+
+# Initialize session state first (before any session state access)
+session_manager = SessionManager()
+session_manager.initialize_session_state()
 
 # Custom CSS for multipage navigation and admin panel
 st.markdown("""
@@ -112,10 +117,3 @@ if not st.session_state.admin_logged_in:
     render_login_page()
 else:
     render_admin_dashboard()
-# Initialize session state
-if 'admin_logged_in' not in st.session_state:
-    st.session_state.admin_logged_in = False
-if 'show_change_password' not in st.session_state:
-    st.session_state.show_change_password = False
-if 'admin_nav' not in st.session_state:
-    st.session_state.admin_nav = "📂 Manage Curriculums"  # Default to Manage page

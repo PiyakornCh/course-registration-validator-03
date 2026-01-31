@@ -155,11 +155,9 @@ def main():
         layout="wide"
     )
     
-    # Initialize session state for admin
-    if 'admin_logged_in' not in st.session_state:
-        st.session_state.admin_logged_in = False
-    if 'show_change_password' not in st.session_state:
-        st.session_state.show_change_password = False
+    # Initialize session manager first (before any session state access)
+    session_manager = SessionManager()
+    session_manager.initialize_session_state()
     
     # Custom CSS for multipage navigation
     st.markdown("""
@@ -187,10 +185,6 @@ def main():
     }
     </style>
     """, unsafe_allow_html=True)
-    
-    # Initialize session manager
-    session_manager = SessionManager()
-    session_manager.initialize_session_state()
     
     # Check if admin mode is active
     if st.session_state.admin_mode:

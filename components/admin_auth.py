@@ -114,7 +114,14 @@ def render_login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.subheader("🔐 Admin Login")
+        st.markdown(
+            """
+            <div style="text-align: center;">
+                <h3>Admin Login</h3>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
         # Create a form to enable Enter key submission
         with st.form(key="login_form", clear_on_submit=False):
@@ -124,10 +131,10 @@ def render_login_page():
             col_btn1, col_btn2 = st.columns(2)
             
             with col_btn1:
-                login_submitted = st.form_submit_button("🚀 Login", use_container_width=True, type="primary")
+                login_submitted = st.form_submit_button("Login", use_container_width=True, type="primary")
             
             with col_btn2:
-                change_pass_btn = st.form_submit_button("🔑 Change Password", use_container_width=True)
+                change_pass_btn = st.form_submit_button("Change Password", use_container_width=True)
         
         # Handle login submission
         if login_submitted:

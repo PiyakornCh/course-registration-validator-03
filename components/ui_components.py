@@ -379,8 +379,7 @@ class UIComponents:
         with col_cr3:
             st.metric("Technical Electives", f"{credit_summary.get('technical_electives', 0)}", help="Variable requirement")
             st.metric("Free Electives", f"{credit_summary.get('free_electives', 0)}", help="Variable requirement")
-            st.metric("Unidentified", f"{credit_summary.get('unidentified', 0)}", help="Courses needing classification", delta_color="off")
-    
+            
     @staticmethod
     def display_unidentified_courses_info(unidentified_courses: List[Dict]):
         """Display information about unidentified courses grouped by semester."""

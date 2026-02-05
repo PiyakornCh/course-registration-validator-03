@@ -52,6 +52,7 @@ class PDFExtractor:
     def extract_student_info(self, text):
         """
         Extract student information from the extracted text.
+        Handles both format 1 and format 2 PDFs.
         
         Args:
             text: Extracted text from PDF
@@ -72,23 +73,45 @@ class PDFExtractor:
                 # If less than 10 digits found, use what we have
                 student_id = digits
         
-        # Extract name - stop at "Field of Study" 
+        # Extract name - handle both formats
         student_name = "Unknown"
-        name_match = re.search(r'Name\s+(.*?)(?=Field of Study|Date of Admission|\n|$)', text)
+        
+        # Format 2: Name and Field of Study on same line (try this first)
+        # Pattern: Name       Mr. Napat PERMPONGPANTH Field Of Study  Industrial Engineering
+        name_match = re.search(r'Name\s+(.*?)\s+Field Of Study', text, re.IGNORECASE)
         if name_match:
             student_name = name_match.group(1).strip()
+        else:
+            # Format 1: Name on separate line
+            name_match = re.search(r'Name\s+(.*?)(?=Field of Study|Date of Admission|\n|$)', text)
+            if name_match:
+                student_name = name_match.group(1).strip()
         
-        # Extract field of study
+        # Extract field of study - handle both formats
         field_of_study = "Unknown"
-        field_match = re.search(r'Field of Study\s+(.*?)(?=Date of Admission|\n|$)', text)
+        
+        # Try standard pattern first
+        field_match = re.search(r'Field of Study\s+(.*?)(?=Date of Admission|\n|$)', text, re.IGNORECASE)
         if field_match:
             field_of_study = field_match.group(1).strip()
+        else:
+            # Format 2: Field Of Study on same line as Name
+            field_match = re.search(r'Field Of Study\s+(.*?)(?=\n|$)', text, re.IGNORECASE)
+            if field_match:
+                field_of_study = field_match.group(1).strip()
         
-        # Extract date of admission
+        # Extract date of admission - handle both formats
         date_admission = "Unknown"
-        date_match = re.search(r'Date of Admission\s+(.*?)(?:\n|$)', text)
+        
+        # Try standard pattern first
+        date_match = re.search(r'Date of Admission\s+(.*?)(?:\n|$)', text, re.IGNORECASE)
         if date_match:
             date_admission = date_match.group(1).strip()
+        else:
+            # Format 2: Date Of Admission on same line as Date Of Birth
+            date_match = re.search(r'Date Of Admission\s+(.*?)(?:\n|$)', text, re.IGNORECASE)
+            if date_match:
+                date_admission = date_match.group(1).strip()
         
         return {
             "id": student_id,
@@ -115,7 +138,7 @@ class PDFExtractor:
         # Followed by course name, grade, and credits
         course_pattern = r'(\d{2,8}(?:\s*\d{1,6})?)\s+([A-Za-z][^\d\n]{5,100}?)\s+([A-Z][\+\-]?|W|N|F|P)\s+(\d+)'
         
-        gpa_pattern = r'sem\.\s*G\.P\s*\.A\.\s*=\s*(\d+\.\d+).*?cum\.\s*G\.P\s*\.A\.\s*=\s*(\d+\.\d+)'
+        gpa_pattern = r'sem\.\s*G\.P\.A\.\s*=\s*(\d+\.\d+).*?cum\.\s*G\.P\.A\.\s*=\s*(\d+\.\d+)'
         
         semesters = []
         
@@ -171,7 +194,7 @@ class PDFExtractor:
                     continue
                 
                 # Check for GPA line
-                gpa_match = re.search(gpa_pattern, line, re.IGNORECASE)
+                gpa_match = re.search(gpa_pattern, line, re.IGNORECASE | re.DOTALL)
                 if gpa_match:
                     try:
                         current_semester["sem_gpa"] = float(gpa_match.group(1))
@@ -179,6 +202,21 @@ class PDFExtractor:
                     except (ValueError, IndexError):
                         pass
                     continue
+                
+                # Also check for individual GPA lines
+                sem_gpa_match = re.search(r'sem\.\s*G\.P\.A\.\s*=\s*(\d+\.\d+)', line, re.IGNORECASE)
+                if sem_gpa_match and current_semester["sem_gpa"] is None:
+                    try:
+                        current_semester["sem_gpa"] = float(sem_gpa_match.group(1))
+                    except (ValueError, IndexError):
+                        pass
+                
+                cum_gpa_match = re.search(r'cum\.\s*G\.P\.A\.\s*=\s*(\d+\.\d+)', line, re.IGNORECASE)
+                if cum_gpa_match and current_semester["cum_gpa"] is None:
+                    try:
+                        current_semester["cum_gpa"] = float(cum_gpa_match.group(1))
+                    except (ValueError, IndexError):
+                        pass
                 
                 # Find all course matches in this line
                 course_matches = list(re.finditer(course_pattern, line))

@@ -49,6 +49,68 @@ class PDFExtractor:
             logger.error(f"Error extracting text from {pdf_path}: {e}")
             return ""
     
+    def fix_name_spacing(self, name):
+        """
+        Fix common spacing issues in names extracted from PDF.
+        
+        Args:
+            name: Raw name string from PDF extraction
+            
+        Returns:
+            Cleaned name string
+        """
+        if not name or name == "Unknown":
+            return name
+        
+        # Remove extra whitespace
+        name = re.sub(r'\s+', ' ', name.strip())
+        
+        # Common patterns to fix:
+        # 1. Single letter splits like "PHANY A" -> "PHANYA"
+        # 2. Split surnames like "SAMAR TKIT" -> "SAMARTKIT"  
+        # 3. Split names like "Pat hanin" -> "Pathanin"
+        
+        # Pattern 1: Fix single letter at the end (like "PHANY A" -> "PHANYA")
+        # But preserve initials at the beginning (like "Dr. A B Johnson")
+        words = name.split()
+        if len(words) >= 3:
+            # Check if last word is a single uppercase letter and previous word is uppercase
+            # Also make sure we're not dealing with initials at the beginning
+            if (len(words[-1]) == 1 and words[-1].isupper() and 
+                len(words[-2]) >= 3 and words[-2].isupper()):
+                # Combine the last two words
+                words[-2] = words[-2] + words[-1]
+                words = words[:-1]
+                name = ' '.join(words)
+        
+        # Pattern 2: Fix multiple single letters at the end
+        # Keep combining single letters with the previous word if it's uppercase
+        # But avoid combining if it looks like initials (first few words)
+        words = name.split()
+        changed = True
+        while changed:
+            changed = False
+            i = len(words) - 1
+            while i > 2:  # Start from position 2 to preserve initials at beginning
+                if (len(words[i]) == 1 and words[i].isupper() and 
+                    len(words[i-1]) >= 1 and words[i-1].isupper()):
+                    words[i-1] = words[i-1] + words[i]
+                    words.pop(i)
+                    changed = True
+                    break
+                i -= 1
+        name = ' '.join(words)
+        
+        # Pattern 3: Fix split surnames (usually all caps)
+        # Look for pattern like "WORD WORD" where both are uppercase and reasonably sized
+        name = re.sub(r'\b([A-Z]{3,8})\s+([A-Z]{2,8})\b', r'\1\2', name)
+        
+        # Pattern 4: Fix split first names (mixed case)
+        # Look for pattern like "Pat hanin" -> "Pathanin"
+        name = re.sub(r'\b([A-Z][a-z]{2,})\s+([a-z]{2,})\b', r'\1\2', name)
+        
+        return name
+
     def extract_student_info(self, text):
         """
         Extract student information from the extracted text.
@@ -80,12 +142,14 @@ class PDFExtractor:
         # Pattern: Name       Mr. Napat PERMPONGPANTH Field Of Study  Industrial Engineering
         name_match = re.search(r'Name\s+(.*?)\s+Field Of Study', text, re.IGNORECASE)
         if name_match:
-            student_name = name_match.group(1).strip()
+            raw_name = name_match.group(1).strip()
+            student_name = self.fix_name_spacing(raw_name)
         else:
             # Format 1: Name on separate line
             name_match = re.search(r'Name\s+(.*?)(?=Field of Study|Date of Admission|\n|$)', text)
             if name_match:
-                student_name = name_match.group(1).strip()
+                raw_name = name_match.group(1).strip()
+                student_name = self.fix_name_spacing(raw_name)
         
         # Extract field of study - handle both formats
         field_of_study = "Unknown"

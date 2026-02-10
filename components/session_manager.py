@@ -88,8 +88,8 @@ class SessionManager:
     def logout_admin():
         """Clean logout for admin."""
         st.session_state.admin_logged_in = False
-        st.session_state.admin_nav = "Manage Curriculums"
         st.session_state.came_from_admin = True
+
 
     @staticmethod
     def reset_all():

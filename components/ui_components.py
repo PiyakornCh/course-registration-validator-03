@@ -156,6 +156,24 @@ class UIComponents:
             st.divider()
             st.header("📁 Upload Transcript")
             
+            # Add download button for PDF format example
+            try:
+                pdf_format_path = Path("PDF_Format.pdf")
+                if pdf_format_path.exists():
+                    with open(pdf_format_path, "rb") as f:
+                        pdf_format_bytes = f.read()
+                    
+                    st.download_button(
+                        label="📥 Download PDF Format Example",
+                        data=pdf_format_bytes,
+                        file_name="PDF_Format.pdf",
+                        mime="application/pdf",
+                        help="Download example PDF format for transcript"
+                    )
+            except Exception as e:
+                # Silently fail if PDF format file is not found
+                pass
+
             pdf_file = st.file_uploader(
                 "Upload PDF Transcript", 
                 type=['pdf'],
@@ -303,6 +321,24 @@ class UIComponents:
             4. **View interactive visualizations**
             5. **Download various report formats**
             """)
+            
+            # Add download button for user manual
+            try:
+                manual_path = Path("manual.pdf")
+                if manual_path.exists():
+                    with open(manual_path, "rb") as f:
+                        manual_bytes = f.read()
+                    
+                    st.download_button(
+                        label="📖 Download User Manual",
+                        data=manual_bytes,
+                        file_name="manual.pdf",
+                        mime="application/pdf",
+                        help="Download complete user manual"
+                    )
+            except Exception as e:
+                # Silently fail if manual file is not found
+                pass
         
         with col_info2:
             st.markdown("### Key Features:")

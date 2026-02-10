@@ -90,7 +90,6 @@ class SessionManager:
         st.session_state.admin_logged_in = False
         st.session_state.came_from_admin = True
 
-
     @staticmethod
     def reset_all():
         """Reset EVERYTHING (use carefully)."""

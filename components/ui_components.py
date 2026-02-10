@@ -158,7 +158,7 @@ class UIComponents:
             
             # Add download button for PDF format example
             try:
-                pdf_format_path = Path("PDF_Format.pdf")
+                pdf_format_path = Path("example_files/PDF_Format.pdf")
                 if pdf_format_path.exists():
                     with open(pdf_format_path, "rb") as f:
                         pdf_format_bytes = f.read()
@@ -324,7 +324,7 @@ class UIComponents:
             
             # Add download button for user manual
             try:
-                manual_path = Path("manual.pdf")
+                manual_path = Path("example_files/manual.pdf")
                 if manual_path.exists():
                     with open(manual_path, "rb") as f:
                         manual_bytes = f.read()

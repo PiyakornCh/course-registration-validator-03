@@ -193,28 +193,28 @@ def render_upload_page():
         st.header("📤 Upload CSV File")
     with col2:
         try:
-            with open("course_data/format.csv", "r", encoding="utf-8") as f:
+            with open("example_files/upload_courses_format.csv", "r", encoding="utf-8") as f:
                 format_csv_content = f.read()
             
             st.markdown("<br>", unsafe_allow_html=True)  # Add spacing to align with header
             st.download_button(
                 label="📥 Download Format",
                 data=format_csv_content,
-                file_name="format.csv",
+                file_name="upload_courses_format.csv",
                 mime="text/csv",
                 help="Download the CSV format template",
                 type="secondary",
                 use_container_width=True
             )
         except FileNotFoundError:
-            st.info("💡 format.csv not found in course_data folder")
+            st.info("💡 upload_courses_format.csv not found in example_files folder")
     
     st.markdown("Upload your course curriculum CSV file to convert it to JSON format")
     
     uploaded_file = st.file_uploader(
         "Choose a CSV file",
         type=['csv'],
-        help="File must follow the format specified in format.csv (available for download above)"
+        help="File must follow the format specified in upload_courses_format.csv (available for download above)"
     )
     
     if uploaded_file is not None:

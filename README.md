@@ -100,7 +100,7 @@ streamlit run Home.py
    - Navigate to "Admin Home" from sidebar
 
 2. **Upload New Curriculum Data**
-   - Download format template (format.csv)
+   - Download format template (upload_courses_format.csv)
    - Prepare curriculum data
    - Upload CSV file and specify curriculum year
    - System automatically converts to JSON format
@@ -145,7 +145,9 @@ streamlit run Home.py
 │   │   └── template.json
 │   ├── gen_ed_courses.json         # General education courses
 │   ├── technical_elective_config.json # Technical elective configuration
-│   └── format.csv                  # CSV upload template
+│   └── [Removed - moved to example_files/]
+├── example_files/                  # Example and template files
+│   └── upload_courses_format.csv   # CSV upload template
 ├── validator.py                    # Core validation logic
 ├── requirements.txt                # Python dependencies
 └── README.md                       # This file

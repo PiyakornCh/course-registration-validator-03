@@ -200,7 +200,8 @@ class PDFExtractor:
         # KEY FIX: Course code pattern handles spaces in course codes
         # Matches: 01208111 OR 012081 11 OR 0120 8111, etc.
         # Followed by course name, grade, and credits
-        course_pattern = r'(\d{2,8}(?:\s*\d{1,6})?)\s+([A-Za-z][^\d\n]{5,100}?)\s+([A-Z][\+\-]?|W|N|F|P)\s+(\d+)'
+        # Updated to handle F (3) format where credits are in parentheses
+        course_pattern = r'(\d{2,8}(?:\s*\d{1,6})?)\s+([A-Za-z][^\d\n]{5,100}?)\s+([A-Z][\+\-]?|W|N|F|P)\s+(?:\()?(\d+)(?:\))?'
         
         gpa_pattern = r'sem\.\s*G\.P\.A\.\s*=\s*(\d+\.\d+).*?cum\.\s*G\.P\.A\.\s*=\s*(\d+\.\d+)'
         

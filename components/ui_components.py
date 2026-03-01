@@ -382,7 +382,7 @@ class UIComponents:
         st.divider()
         if st.button("Process Another PDF", type="secondary"):
             from components.session_manager import SessionManager
-            SessionManager.reset_all_state()
+            SessionManager.reset_all()
             st.rerun()
     
     @staticmethod

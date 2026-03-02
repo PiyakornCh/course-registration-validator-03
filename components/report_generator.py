@@ -69,7 +69,7 @@ class ReportGenerator:
         st.divider()
         st.header("📥 Download Reports")
         
-        col_dl1, col_dl2, col_dl3, col_dl4 = st.columns(4)
+        col_dl1, col_dl2, col_dl3 = st.columns(3)
         
         # Comprehensive Report
         with col_dl1:

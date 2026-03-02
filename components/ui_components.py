@@ -249,9 +249,7 @@ class UIComponents:
             
             with col_dl3:
                 report_generator._handle_text_report_download(student_info, semesters, validation_results, selected_course_data)
-            
-            with col_dl4:
-                report_generator._handle_json_export_download(student_info, semesters, validation_results, selected_course_data)
+
         
         # Display Semester Summary below Download Reports
         st.divider()

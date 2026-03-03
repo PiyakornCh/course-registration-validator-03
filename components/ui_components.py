@@ -239,7 +239,7 @@ class UIComponents:
             from components.report_generator import ReportGenerator
             report_generator = ReportGenerator()
             
-            col_dl1, col_dl2, col_dl3, col_dl4 = st.columns(4)
+            col_dl1, col_dl2, col_dl3 = st.columns(3)
             
             with col_dl1:
                 report_generator._handle_comprehensive_report_download(student_info, semesters, validation_results, selected_course_data)
@@ -249,7 +249,6 @@ class UIComponents:
             
             with col_dl3:
                 report_generator._handle_text_report_download(student_info, semesters, validation_results, selected_course_data)
-
         
         # Display Semester Summary below Download Reports
         st.divider()
@@ -316,7 +315,7 @@ class UIComponents:
             1. **Select course catalog**
             2. **Upload PDF transcript** in the sidebar
             3. **Wait for processing**
-            4. **View interactive visualizations**
+            4. **View the processed results**
             5. **Download various report formats**
             """)
             

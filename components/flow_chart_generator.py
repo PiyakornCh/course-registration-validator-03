@@ -88,6 +88,141 @@ class FlowChartGenerator:
     def analyze_student_progress_enhanced(self, semesters: List[Dict], template: Dict, course_categories: Dict):
         """Analyze student progress."""
         return self.data_analyzer.analyze_student_progress(semesters, template)
+    
+    def _analyze_delayed_courses(self, semesters: List[Dict], template: Dict, course_categories: Dict) -> List[Dict]:
+        """Analyze courses that are delayed or not yet passed compared to curriculum timeline."""
+        delayed_courses = []
+        
+        # Get current semester (latest semester in student data) - this is the reference point
+        # Note: We need to find the ACADEMIC year (1, 2, 3, 4), not calendar year
+        current_academic_year = 0
+        current_term = 0
+        
+        # First, find the earliest year to calculate academic year
+        earliest_year = float('inf')
+        for semester in semesters:
+            year = semester.get('year_int', 0)
+            if year > 0 and year < earliest_year:
+                earliest_year = year
+        
+        # Now find the latest semester and calculate academic year
+        for semester in semesters:
+            calendar_year = semester.get('year_int', 0)
+            term_str = semester.get('term', '1')
+            term = 1 if term_str == '1' else 2
+            
+            # Calculate academic year (1, 2, 3, 4) from calendar year
+            if calendar_year > 0 and earliest_year != float('inf'):
+                academic_year = calendar_year - earliest_year + 1
+            else:
+                academic_year = 0
+            
+            # Update if this semester is later than current
+            if academic_year > current_academic_year or (academic_year == current_academic_year and term > current_term):
+                current_academic_year = academic_year
+                current_term = term
+        
+        # Build a map of course status from student data
+        course_status = {}  # {course_code: {'status': 'passed'/'failed'/'withdrawn'/'not_taken', 'grade': 'A', 'semester': '1/1'}}
+        
+        for semester in semesters:
+            year = semester.get('year_int', 0)
+            term_str = semester.get('term', '1')
+            semester_name = f"{year}/{term_str}"
+            
+            for course in semester.get('courses', []):
+                code = course.get('code', '')
+                grade = course.get('grade', '').strip()
+                
+                # Determine status
+                if grade in ['A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'P']:
+                    status = 'passed'
+                elif grade == 'F':
+                    status = 'failed'
+                elif grade == 'W':
+                    status = 'withdrawn'
+                elif grade == 'N':
+                    status = 'not_graded'
+                else:
+                    status = 'other'
+                
+                # Keep track of latest attempt
+                if code not in course_status or status == 'passed':
+                    course_status[code] = {
+                        'status': status,
+                        'grade': grade,
+                        'semester': semester_name,
+                        'year': year,
+                        'term': 1 if term_str == '1' else 2
+                    }
+        
+        # Calculate current semester index (from latest transcript entry)
+        current_semester_index = (current_academic_year - 1) * 2 + current_term
+        
+        # Check each course in the curriculum template
+        for year_key, year_data in template.get('core_curriculum', {}).items():
+            expected_year = int(year_key.split('_')[1])  # Extract year number from 'year_1', 'year_2', etc.
+            
+            for semester_key, course_codes in year_data.items():
+                expected_term = 1 if semester_key == 'first_semester' else 2
+                expected_semester_index = (expected_year - 1) * 2 + expected_term
+                
+                for course_code in course_codes:
+                    # Skip internship course (01206399) as it's handled separately
+                    if course_code == '01206399':
+                        continue
+                    
+                    course_info = course_status.get(course_code, {'status': 'not_taken'})
+                    status = course_info.get('status', 'not_taken')
+                    
+                    # Skip courses with grade N (not graded) - they don't count as delayed
+                    if status == 'not_graded':
+                        continue
+                    
+                    # Check if course is delayed based on current semester (latest in transcript)
+                    is_delayed = False
+                    delay_semesters = 0
+                    
+                    if status == 'not_taken':
+                        # Course should have been taken but wasn't
+                        # Calculate delay from current semester to when it should have been taken
+                        if current_semester_index >= expected_semester_index:
+                            is_delayed = True
+                            delay_semesters = current_semester_index - expected_semester_index
+                    elif status in ['failed', 'withdrawn']:
+                        # Course was attempted but not passed (excluding not graded)
+                        # Calculate delay from current semester to when it should have been taken
+                        if current_semester_index > expected_semester_index:
+                            is_delayed = True
+                            delay_semesters = current_semester_index - expected_semester_index
+                    
+                    if is_delayed and delay_semesters > 0:
+                        # Format delay text as total semesters
+                        semester_text = "semester" if delay_semesters == 1 else "semesters"
+                        delay_text = f"{delay_semesters} {semester_text}"
+                        
+                        # Get course name from course_categories
+                        course_name = "Unknown Course"
+                        if course_code in course_categories.get("all_courses", {}):
+                            course_name = course_categories["all_courses"][course_code].get("name", "Unknown Course")
+                        
+                        delayed_courses.append({
+                            'code': course_code,
+                            'name': course_name,
+                            'expected_year': expected_year,
+                            'expected_term': expected_term,
+                            'expected_semester': f"Year {expected_year} Semester {expected_term}",
+                            'status': status,
+                            'grade': course_info.get('grade', '-'),
+                            'actual_semester': course_info.get('semester', '-'),
+                            'delay_semesters': delay_semesters,
+                            'delay_text': delay_text
+                        })
+        
+        # Sort by delay (most delayed first)
+        delayed_courses.sort(key=lambda x: x['delay_semesters'], reverse=True)
+        
+        return delayed_courses
 
     def create_enhanced_template_flow_html(self, student_info: Dict, semesters: List[Dict], 
                                          validation_results: List[Dict], selected_course_data=None) -> tuple:
@@ -103,6 +238,9 @@ class FlowChartGenerator:
         
         # Analyze progress
         analysis = self.data_analyzer.analyze_student_progress(semesters, template)
+        
+        # Analyze delayed courses
+        delayed_courses = self._analyze_delayed_courses(semesters, template, course_categories)
         
         # Generate curriculum grid HTML
         curriculum_grid_html = ""
@@ -139,9 +277,9 @@ class FlowChartGenerator:
         # Generate electives section
         electives_html = self.html_generator.generate_electives_section(template, analysis)
         
-        # Generate complete HTML
+        # Generate complete HTML with delayed courses
         complete_html = self.html_generator.generate_complete_html(
-            student_info, template, curriculum_grid_html, electives_html, semesters, analysis
+            student_info, template, curriculum_grid_html, electives_html, semesters, analysis, delayed_courses
         )
         
         return complete_html, 0

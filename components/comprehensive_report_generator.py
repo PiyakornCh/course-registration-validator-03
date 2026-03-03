@@ -53,6 +53,154 @@ class ComprehensiveReportGenerator:
         
         return round(total_points / total_credits, 2) if total_credits > 0 else 0.0
     
+    def _analyze_delayed_courses(self, semesters: List[Dict], template: Dict, selected_course_data: Dict) -> List[Dict]:
+        """Analyze courses that are delayed or not yet passed compared to curriculum timeline."""
+        delayed_courses = []
+        
+        # Load template if not provided
+        if not template:
+            from components.flow_chart_generator import FlowChartGenerator
+            flow_generator = FlowChartGenerator()
+            curriculum_name = selected_course_data.get('curriculum_folder', 'B-IE-2565')
+            template = flow_generator.load_curriculum_template_for_flow(curriculum_name)
+            
+            if not template:
+                return []
+        
+        # Get current semester (latest semester in student data) - this is the reference point
+        # Note: We need to find the ACADEMIC year (1, 2, 3, 4), not calendar year
+        current_academic_year = 0
+        current_term = 0
+        
+        # First, find the earliest year to calculate academic year
+        earliest_year = float('inf')
+        for semester in semesters:
+            year = semester.get('year_int', 0)
+            if year > 0 and year < earliest_year:
+                earliest_year = year
+        
+        # Now find the latest semester and calculate academic year
+        for semester in semesters:
+            calendar_year = semester.get('year_int', 0)
+            term_str = semester.get('term', '1')
+            term = 1 if term_str == '1' else 2
+            
+            # Calculate academic year (1, 2, 3, 4) from calendar year
+            if calendar_year > 0 and earliest_year != float('inf'):
+                academic_year = calendar_year - earliest_year + 1
+            else:
+                academic_year = 0
+            
+            # Update if this semester is later than current
+            if academic_year > current_academic_year or (academic_year == current_academic_year and term > current_term):
+                current_academic_year = academic_year
+                current_term = term
+        
+        # Build a map of course status from student data
+        course_status = {}  # {course_code: {'status': 'passed'/'failed'/'withdrawn'/'not_taken', 'grade': 'A', 'semester': '1/1'}}
+        
+        for semester in semesters:
+            year = semester.get('year_int', 0)
+            term_str = semester.get('term', '1')
+            semester_name = f"{year}/{term_str}"
+            
+            for course in semester.get('courses', []):
+                code = course.get('code', '')
+                grade = course.get('grade', '').strip()
+                
+                # Determine status
+                if grade in ['A', 'B+', 'B', 'C+', 'C', 'D+', 'D', 'P']:
+                    status = 'passed'
+                elif grade == 'F':
+                    status = 'failed'
+                elif grade == 'W':
+                    status = 'withdrawn'
+                elif grade == 'N':
+                    status = 'not_graded'
+                else:
+                    status = 'other'
+                
+                # Keep track of latest attempt
+                if code not in course_status or status == 'passed':
+                    course_status[code] = {
+                        'status': status,
+                        'grade': grade,
+                        'semester': semester_name,
+                        'year': year,
+                        'term': 1 if term_str == '1' else 2
+                    }
+        
+        # Get course names from selected_course_data
+        course_names = {}
+        if 'data' in selected_course_data and 'industrial_engineering_courses' in selected_course_data['data']:
+            for course in selected_course_data['data']['industrial_engineering_courses']:
+                code = course.get('code', '')
+                name = course.get('name', '')
+                course_names[code] = name
+        
+        # Calculate current semester index (from latest transcript entry)
+        current_semester_index = (current_academic_year - 1) * 2 + current_term
+        
+        # Check each course in the curriculum template
+        for year_key, year_data in template.get('core_curriculum', {}).items():
+            expected_year = int(year_key.split('_')[1])  # Extract year number from 'year_1', 'year_2', etc.
+            
+            for semester_key, course_codes in year_data.items():
+                expected_term = 1 if semester_key == 'first_semester' else 2
+                expected_semester_index = (expected_year - 1) * 2 + expected_term
+                
+                for course_code in course_codes:
+                    # Skip internship course (01206399) as it's handled separately
+                    if course_code == '01206399':
+                        continue
+                    
+                    course_info = course_status.get(course_code, {'status': 'not_taken'})
+                    status = course_info.get('status', 'not_taken')
+                    
+                    # Skip courses with grade N (not graded) - they don't count as delayed
+                    if status == 'not_graded':
+                        continue
+                    
+                    # Check if course is delayed based on current semester (latest in transcript)
+                    is_delayed = False
+                    delay_semesters = 0
+                    
+                    if status == 'not_taken':
+                        # Course should have been taken but wasn't
+                        # Calculate delay from current semester to when it should have been taken
+                        if current_semester_index >= expected_semester_index:
+                            is_delayed = True
+                            delay_semesters = current_semester_index - expected_semester_index
+                    elif status in ['failed', 'withdrawn']:
+                        # Course was attempted but not passed (excluding not graded)
+                        # Calculate delay from current semester to when it should have been taken
+                        if current_semester_index > expected_semester_index:
+                            is_delayed = True
+                            delay_semesters = current_semester_index - expected_semester_index
+                    
+                    if is_delayed and delay_semesters > 0:
+                        # Format delay text as total semesters
+                        semester_text = "semester" if delay_semesters == 1 else "semesters"
+                        delay_text = f"{delay_semesters} {semester_text}"
+                        
+                        delayed_courses.append({
+                            'code': course_code,
+                            'name': course_names.get(course_code, 'Unknown Course'),
+                            'expected_year': expected_year,
+                            'expected_term': expected_term,
+                            'expected_semester': f"Year {expected_year} Semester {expected_term}",
+                            'status': status,
+                            'grade': course_info.get('grade', '-'),
+                            'actual_semester': course_info.get('semester', '-'),
+                            'delay_semesters': delay_semesters,
+                            'delay_text': delay_text
+                        })
+        
+        # Sort by delay (most delayed first)
+        delayed_courses.sort(key=lambda x: x['delay_semesters'], reverse=True)
+        
+        return delayed_courses
+    
     def generate_comprehensive_report(self, student_info: Dict, semesters: List[Dict], 
                                     validation_results: List[Dict], selected_course_data: Dict) -> str:
         """Generate a comprehensive HTML report with analysis and recommendations."""
@@ -70,6 +218,9 @@ class ComprehensiveReportGenerator:
         
         # Analyze student progress
         analysis = flow_generator.analyze_student_progress_enhanced(semesters, self.template, self.course_categories)
+        
+        # Analyze delayed courses
+        delayed_courses = self._analyze_delayed_courses(semesters, self.template, selected_course_data)
         
         def parse_credits(raw, default=3):
             if isinstance(raw, int):
@@ -163,7 +314,7 @@ class ComprehensiveReportGenerator:
         html_content += self._generate_course_completion_analysis(analysis, semesters, selected_course_data)
         html_content += self._generate_validation_issues_section(validation_results)
         html_content += self._generate_graduation_requirements_section(analysis)
-        html_content += self._generate_semester_planning_section(analysis, semesters)
+        html_content += self._generate_semester_planning_section(analysis, semesters, delayed_courses)
         html_content += self._generate_footer()
         
         return html_content
@@ -678,8 +829,101 @@ class ComprehensiveReportGenerator:
         </div>
         """
     
-    def _generate_semester_planning_section(self, analysis: Dict, semesters: List[Dict]) -> str:
+    def _generate_semester_planning_section(self, analysis: Dict, semesters: List[Dict], delayed_courses: List[Dict]) -> str:
         """Generate next semester planning suggestions."""
+        
+        planning_html = """
+        <div class="section">
+            <div class="section-header">📅 Next Semester Planning</div>
+            <div class="section-content">
+        """
+        
+        # Add delayed courses section first if there are any
+        if delayed_courses:
+            planning_html += f"""
+            <div class="alert alert-warning" style="margin-bottom: 20px;">
+                <strong>⚠️ Priority Courses:</strong> {len(delayed_courses)} courses are delayed or incomplete.
+            </div>
+            
+            <h4 style="margin-bottom: 15px; color: #A73239;">Delayed or Incomplete IE Core Courses:</h4>
+            """
+            
+            for course in delayed_courses:
+                status = course['status']
+                
+                # Determine status display and colors
+                if status == 'not_taken':
+                    status_display = "Not Enrolled"
+                    grade_display = "-"
+                    grade_color = "#999"
+                    border_color = "#dc3545"
+                    bg_color = "#fff5f5"
+                elif status == 'failed':
+                    status_display = "Failed"
+                    grade_display = "F"
+                    grade_color = "#dc3545"
+                    border_color = "#dc3545"
+                    bg_color = "#fff5f5"
+                elif status == 'withdrawn':
+                    status_display = "Withdrawn"
+                    grade_display = "W"
+                    grade_color = "#ff8c00"
+                    border_color = "#ff8c00"
+                    bg_color = "#fff8f0"
+                elif status == 'not_graded':
+                    status_display = "Not Graded"
+                    grade_display = "N"
+                    grade_color = "#6c757d"
+                    border_color = "#6c757d"
+                    bg_color = "#f8f9fa"
+                else:
+                    status_display = course['grade']
+                    grade_display = course['grade']
+                    grade_color = "#ffc107"
+                    border_color = "#ffc107"
+                    bg_color = "#fffbf0"
+                
+                planning_html += f"""
+                <div style="background: {bg_color}; border-left: 4px solid {border_color}; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #333; font-size: 1.05em; margin-bottom: 4px;">
+                                {course['code']}
+                            </div>
+                            <div style="color: #666; font-size: 0.9em;">
+                                {course['name']}
+                            </div>
+                        </div>
+                        <div style="text-align: right; margin-left: 20px;">
+                            <div style="background: white; border: 2px solid {grade_color}; border-radius: 6px; padding: 4px 12px; font-weight: 700; color: {grade_color}; font-size: 1.1em; min-width: 50px; text-align: center;">
+                                {grade_display}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 20px; font-size: 0.85em; color: #666;">
+                        <div>
+                            <strong>Status:</strong> {status_display}
+                        </div>
+                        <div style="color: #dc3545; font-weight: 600;">
+                            <strong>Delayed:</strong> {course['delay_text']}
+                        </div>
+                    </div>
+                </div>
+                """
+            
+            planning_html += """
+            <div class="alert alert-info" style="margin-top: 20px; margin-bottom: 20px;">
+                <strong>Note:</strong> These courses may be prerequisites for other courses. 
+                Please consult with your academic advisor to plan your course registration.
+            </div>
+            """
+        else:
+            # Show success message when no delayed courses
+            planning_html += """
+            <div class="alert alert-success" style="margin-bottom: 20px;">
+                <strong>✅ Course Progress Status:</strong> Excellent! All courses are on track according to the curriculum timeline.
+            </div>
+            """
         
         # Find missing requirements
         missing_requirements = []
@@ -692,16 +936,10 @@ class ComprehensiveReportGenerator:
                     'credits_needed': remaining
                 })
         
-        planning_html = """
-        <div class="section">
-            <div class="section-header">📅 Next Semester Planning</div>
-            <div class="section-content">
-        """
-        
         if missing_requirements:
             planning_html += """
+            <h4 style="margin-bottom: 15px; color: #A73239;">Elective Requirements:</h4>
             <div class="semester-plan">
-                <h4>Suggested Focus Areas for Next Semester:</h4>
             """
             
             for req in missing_requirements[:3]:  # Show top 3 priorities
@@ -717,7 +955,7 @@ class ComprehensiveReportGenerator:
         
         # Add general planning advice
         planning_html += """
-        <div class="alert alert-info">
+        <div class="alert alert-info" style="margin-top: 20px;">
             <strong>Planning Tips:</strong>
             <ul style="margin-top: 10px; padding-left: 20px;">
                 <li>Meet with your academic advisor to discuss course selection</li>

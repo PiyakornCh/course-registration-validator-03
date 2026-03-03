@@ -324,14 +324,47 @@ class FlowChartHTMLGenerator:
             .course-box-info {
                 flex: 1;
                 display: flex;
-                flex-direction: column;
-                gap: 2px;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
             }
             
             .course-box-code {
                 font-weight: 600;
                 font-size: 0.75em;
                 color: #333;
+            }
+            
+            .course-box-grade {
+                font-weight: 700;
+                font-size: 0.75em;
+                color: #666;
+                flex-shrink: 0;
+            }
+            
+            .course-box.passed .course-box-grade {
+                color: #28a745;
+            }
+            
+            .course-box.grade-f .course-box-grade {
+                color: #dc3545;
+            }
+            
+            .course-box.grade-w .course-box-grade {
+                color: #ff8c00;
+            }
+            
+            .course-box.grade-n .course-box-grade {
+                color: #6c757d;
+            }
+            
+            .course-box.grade-i .course-box-grade {
+                color: #ffc107;
+            }
+            
+            .course-box.not-enrolled .course-box-grade {
+                color: #bbb;
             }
 
             /* Tooltip */
@@ -1223,6 +1256,9 @@ class FlowChartHTMLGenerator:
                            status_class: str, grade: str, year: int, term: int,
                            prerequisite: str = "", actual_semester: str = "", corequisite: str = "") -> str:
         """Generate HTML for a single course box."""
+        # Don't show grade text for "Not Enrolled" courses
+        grade_display = "" if grade == "Not Enrolled" else grade
+        
         return f"""
         <div class="course-box {status_class}" 
              data-code="{course_code}"
@@ -1239,6 +1275,7 @@ class FlowChartHTMLGenerator:
             <div class="course-box-indicator">{credits}</div>
             <div class="course-box-info">
                 <div class="course-box-code">{course_code}</div>
+                <div class="course-box-grade">{grade_display}</div>
             </div>
         </div>
         """
@@ -1263,12 +1300,18 @@ class FlowChartHTMLGenerator:
     
     def generate_complete_html(self, student_info: Dict, template: Dict, 
                               curriculum_grid_html: str, electives_html: str = "", 
-                              semesters: List[Dict] = None, analysis: Dict = None) -> str:
+                              semesters: List[Dict] = None, analysis: Dict = None,
+                              delayed_courses: List[Dict] = None) -> str:
         """Generate the complete HTML document."""
         css_styles = self.generate_css_styles()
         javascript = self.generate_javascript()
         header_html = self.generate_header_section(student_info, template, semesters, analysis)
         legend_html = self.generate_legend_section()
+        
+        # Generate delayed courses section (always show, even if empty)
+        delayed_courses_html = ""
+        if delayed_courses is not None:
+            delayed_courses_html = self.generate_delayed_courses_section(delayed_courses)
         
         return f"""
         <!DOCTYPE html>
@@ -1291,6 +1334,7 @@ class FlowChartHTMLGenerator:
                     </div>
                 </div>
                 {electives_html}
+                {delayed_courses_html}
             </div>
             {javascript}
         </body>
@@ -1354,4 +1398,105 @@ class FlowChartHTMLGenerator:
             html += '</div>'
         
         html += '</div></div>'
+        return html
+    
+    def generate_delayed_courses_section(self, delayed_courses: List[Dict]) -> str:
+        """Generate section showing courses that are delayed or not yet passed."""
+        
+        if not delayed_courses:
+            return """
+            <div class="electives-section">
+                <h2 style="color: #28a745;">✅ Course Progress Status</h2>
+                <div style="background: #d4edda; border: 2px solid #28a745; border-radius: 10px; padding: 20px; text-align: center;">
+                    <p style="color: #155724; font-size: 1.1em; margin: 0;">
+                        <strong>Excellent!</strong> All courses are on track according to the curriculum timeline.
+                    </p>
+                </div>
+            </div>
+            """
+        
+        html = f"""
+        <div class="electives-section">
+            <h2 style="color: #A73239;">⚠️ Delayed or Incomplete Courses</h2>
+            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+                <p style="color: #856404; margin: 0;">
+                    <strong>{len(delayed_courses)} courses</strong> are delayed or incomplete compared to the standard curriculum timeline.
+                </p>
+            </div>
+            
+        """
+        
+        for course in delayed_courses:
+            status = course['status']
+            
+            # Determine status display and colors
+            if status == 'not_taken':
+                status_display = "Not Enrolled"
+                grade_display = "-"
+                grade_color = "#999"
+                border_color = "#dc3545"
+                bg_color = "#fff5f5"
+            elif status == 'failed':
+                status_display = "Failed"
+                grade_display = "F"
+                grade_color = "#dc3545"
+                border_color = "#dc3545"
+                bg_color = "#fff5f5"
+            elif status == 'withdrawn':
+                status_display = "Withdrawn"
+                grade_display = "W"
+                grade_color = "#ff8c00"
+                border_color = "#ff8c00"
+                bg_color = "#fff8f0"
+            elif status == 'not_graded':
+                status_display = "Not Graded"
+                grade_display = "N"
+                grade_color = "#6c757d"
+                border_color = "#6c757d"
+                bg_color = "#f8f9fa"
+            else:
+                status_display = course['grade']
+                grade_display = course['grade']
+                grade_color = "#ffc107"
+                border_color = "#ffc107"
+                bg_color = "#fffbf0"
+            
+            html += f"""
+            <div style="background: {bg_color}; border-left: 4px solid {border_color}; border-radius: 8px; padding: 15px 20px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #333; font-size: 1.05em; margin-bottom: 4px;">
+                            {course['code']}
+                        </div>
+                        <div style="color: #666; font-size: 0.9em;">
+                            {course['name']}
+                        </div>
+                    </div>
+                    <div style="text-align: right; margin-left: 20px;">
+                        <div style="background: white; border: 2px solid {grade_color}; border-radius: 6px; padding: 4px 12px; font-weight: 700; color: {grade_color}; font-size: 1.1em; min-width: 50px; text-align: center;">
+                            {grade_display}
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 20px; font-size: 0.85em; color: #666;">
+                    <div>
+                        <strong>Status:</strong> {status_display}
+                    </div>
+                    <div style="color: #dc3545; font-weight: 600;">
+                        <strong>Delayed:</strong> {course['delay_text']}
+                    </div>
+                </div>
+            </div>
+            """
+        
+        html += """
+            <div style="background: #e3f2fd; border-left: 4px solid #2196f3; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                <p style="color: #1565c0; margin: 0; font-size: 0.95em;">
+                    <strong>Note:</strong> These courses may be prerequisites for other courses. 
+                    Please consult with your academic advisor to plan your course registration.
+                </p>
+            </div>
+        </div>
+        """
+        
         return html

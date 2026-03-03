@@ -82,7 +82,7 @@ class ReportGenerator:
         # Text Report
         with col_dl3:
             self._handle_text_report_download(student_info, semesters, validation_results, selected_course_data)
-            
+    
     def _handle_comprehensive_report_download(self, student_info: Dict, semesters: List[Dict], 
                                             validation_results: List[Dict], selected_course_data: Dict):
         """Handle comprehensive HTML report download."""
@@ -155,3 +155,22 @@ class ReportGenerator:
         except Exception as e:
             st.error(f"❌ Report error: {str(e)[:50]}...")
     
+    def _handle_json_export_download(self, student_info: Dict, semesters: List[Dict], 
+                                    validation_results: List[Dict], selected_course_data: Dict):
+        """Handle JSON export download."""
+        try:
+            unidentified_count = st.session_state.get('unidentified_count', 0)
+            json_data = self.generate_json_export(
+                student_info, semesters, validation_results, selected_course_data, unidentified_count
+            )
+            
+            st.download_button(
+                label="💾 Raw Data (JSON)",
+                data=json_data,
+                file_name=f"transcript_data_{student_info.get('id', 'unknown')}.json",
+                mime="application/json",
+                help="Raw extracted and validated data",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.error(f"❌ JSON error: {str(e)[:50]}...")
